@@ -1,26 +1,38 @@
-import { ReactNode } from 'react'
-import { TransactionDetails, KotaniPayDetails, TransakDetails, UnlimitDetails } from '@/lib/schemas'
-
 export interface ServiceProvider {
-  id: number;
   uuid: string;
   name: string;
   logo: string;
   description: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
   extras: {
     fee: number;
     supportedCurrency: string[];
   };
 }
 
+export interface OfframpRequest {
+  id?: string;
+  providerUuid: string;
+  chain: string;
+  token: string;
+  amount: number;
+  senderAddress: string;
+}
+
+export interface ProviderAction {
+  uuid: string;
+  action: string;
+  payload?: any;
+}
+
+export interface TransactionDetails extends OfframpRequest {
+  requestUuid?: string;
+}
+
 export interface PaymentFormProps {
   onSubmit: (details: TransactionDetails) => void;
   onBack: () => void;
   onCancel: () => void;
-  supportedCurrencies: string[];
+  provider: ServiceProvider;
 }
 
 export interface QRDisplayProps {
@@ -28,7 +40,6 @@ export interface QRDisplayProps {
   onComplete: () => void;
   onBack: () => void;
   onCancel: () => void;
+  provider: ServiceProvider;
 }
-
-export type { TransactionDetails, KotaniPayDetails, TransakDetails, UnlimitDetails }
 

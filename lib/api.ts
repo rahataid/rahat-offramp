@@ -1,22 +1,19 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:5500/v1" + "/offramps",
+  baseURL: "http://localhost:5500/v1",
 });
 
 export default api;
 
 export const endpoints = {
   offramps: {
-    requests: {
-      create: "/",
-      list: "/",
-      execute: "/execute",
-    },
+    create: "/offramps",
+    execute: "/offramps/execute",
+    list: "/offramps",
     providers: {
-      list: "/providers",
-      register: "/providers",
-      actions: "/providers/actions",
+      list: "/offramps/providers",
+      actions: "/offramps/providers/actions",
     },
   },
 };

@@ -1,45 +1,20 @@
 "use client";
 
-import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Check,
-  ChevronRight,
-  Loader2,
-  DollarSign,
-  Building,
-  CreditCard,
-  Coins,
-  ArrowRight,
-  AlertCircle,
-  Users,
-  QrCode,
-  ArrowLeftRight,
-} from "lucide-react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import QRCode from "qrcode.react";
-
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -47,397 +22,152 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// import { useToast } from "@/components/ui/use-toast"
-import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PaymentFormProps, TransactionDetails } from "@/types/offramp";
 
-const formSchema = z.object({
-  amount: z.string().min(1, "Amount is required"),
-  provider: z.string().min(1, "Provider is required"),
-  accountNumber: z.string().min(1, "Account number is required"),
-  currency: z.string().min(1, "Currency is required"),
-  isGroupOffering: z.boolean().default(false),
+const offrampSchema = z.object({
+  chain: z.string().min(1, "Chain is required"),
+  token: z.string().min(1, "Token is required"),
+  amount: z.number().positive("Amount must be greater than 0"),
+  senderAddress: z.string().min(1, "Sender address is required"),
 });
 
-const providers = [
-  { id: "kotanipay", name: "KotaniPay", balance: "384,595.20 USD" },
-  { id: "transak", name: "Transak", balance: "34,874.15 GBP" },
-  { id: "wise", name: "Wise", balance: "447,256.13 USD" },
-  { id: "unlimit", name: "Unlimit", balance: "236,564.00 EUR" },
-];
-
-export function OfframpForm() {
-  const [step, setStep] = React.useState(1);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [progress, setProgress] = React.useState(0);
-  const [showQR, setShowQR] = React.useState(false);
-  const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] =
-    React.useState(false);
-  // const { toast } = useToast()
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+export function OfframpForm({
+  onSubmit,
+  onBack,
+  onCancel,
+  provider,
+}: PaymentFormProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<TransactionDetails>({
+    resolver: zodResolver(offrampSchema),
     defaultValues: {
-      amount: "",
-      provider: "",
-      accountNumber: "",
-      currency: "",
-      isGroupOffering: false,
+      providerUuid: provider.uuid,
+      chain: "CELO",
+      token: "CUSD",
     },
   });
 
-  React.useEffect(() => {
-    setProgress((step / 4) * 100);
-  }, [step]);
+  const amount = watch("amount");
+  const token = watch("token");
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
+  const onValidSubmit = (data: TransactionDetails) => {
+    onSubmit(data);
+  };
 
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProgress(25);
+  console.log("first", provider);
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProgress(50);
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProgress(75);
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProgress(100);
-
-      setIsConfirmationDialogOpen(true);
-    } catch (error) {
-      // toast({
-      //   variant: "destructive",
-      //   title: "Error",
-      //   description: "Something went wrong. Please try again.",
-      // })
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const presetAmounts = [50, 100, 200, 500];
 
   return (
-    <Card className='w-full max-w-4xl mx-auto bg-white dark:bg-gray-950'>
-      <CardHeader className='border-b'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <CardTitle className='text-2xl font-bold'>
-              Offramp Request
-            </CardTitle>
-            <CardDescription>Convert crypto to mobile money</CardDescription>
-          </div>
-          <Tabs defaultValue='send' className='w-[400px]'>
-            <TabsList className='grid w-full grid-cols-2'>
-              <TabsTrigger value='send'>Send</TabsTrigger>
-              <TabsTrigger value='receive'>Receive</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        <div className='mt-6'>
-          <Progress value={progress} className='h-1' />
-        </div>
+    <Card className='w-full max-w-md mx-auto'>
+      <CardHeader>
+        <CardTitle className='text-2xl font-bold'>
+          {provider.name} Offramp
+        </CardTitle>
+        <CardDescription>
+          Enter the transaction details to create an offramp request
+        </CardDescription>
       </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className='p-6'>
-            <AnimatePresence mode='wait'>
-              {step === 1 && (
-                <motion.div
-                  key='step1'
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className='grid gap-6 md:grid-cols-2'>
-                  <div className='space-y-4'>
-                    <div className='flex items-center justify-between'>
-                      <h3 className='text-lg font-medium'>Send</h3>
-                      <Button variant='ghost' size='sm'>
-                        <ArrowLeftRight className='h-4 w-4 mr-2' />
-                        Swap
-                      </Button>
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name='amount'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <div className='relative'>
-                              <Input
-                                placeholder='0.00'
-                                className='text-3xl h-16 font-medium'
-                                {...field}
-                              />
-                              <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                                <Select>
-                                  <SelectTrigger className='w-[100px] border-0 bg-transparent'>
-                                    <SelectValue placeholder='BTC' />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value='btc'>BTC</SelectItem>
-                                    <SelectItem value='eth'>ETH</SelectItem>
-                                    <SelectItem value='usdc'>USDC</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className='space-y-4'>
-                    <h3 className='text-lg font-medium'>Get</h3>
-                    <div className='relative'>
-                      <Input
-                        readOnly
-                        value={(
-                          parseFloat(form.watch("amount") || "0") * 1.25
-                        ).toFixed(2)}
-                        className='text-3xl h-16 font-medium bg-muted'
-                      />
-                      <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                        <Select>
-                          <SelectTrigger className='w-[100px] border-0 bg-transparent'>
-                            <SelectValue placeholder='USD' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value='usd'>USD</SelectItem>
-                            <SelectItem value='eur'>EUR</SelectItem>
-                            <SelectItem value='gbp'>GBP</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-              {step === 2 && (
-                <motion.div
-                  key='step2'
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className='space-y-6'>
-                  <div className='grid gap-6'>
-                    <FormField
-                      control={form.control}
-                      name='provider'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Select Provider</FormLabel>
-                          <div className='grid gap-4'>
-                            {providers.map((provider) => (
-                              <Card
-                                key={provider.id}
-                                className={`cursor-pointer transition-colors ${
-                                  field.value === provider.id
-                                    ? "border-primary"
-                                    : "hover:bg-muted/50"
-                                }`}
-                                onClick={() =>
-                                  form.setValue("provider", provider.id)
-                                }>
-                                <CardContent className='flex items-center justify-between p-4'>
-                                  <div className='flex items-center space-x-4'>
-                                    <div className='w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center'>
-                                      <Building className='w-5 h-5' />
-                                    </div>
-                                    <div>
-                                      <p className='font-medium'>
-                                        {provider.name}
-                                      </p>
-                                      <p className='text-sm text-muted-foreground'>
-                                        Balance: {provider.balance}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  {field.value === provider.id && (
-                                    <Check className='w-5 h-5 text-primary' />
-                                  )}
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </motion.div>
-              )}
-              {step === 3 && (
-                <motion.div
-                  key='step3'
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className='space-y-6'>
-                  <div className='rounded-lg border p-6 space-y-4 bg-muted/50'>
-                    <h3 className='text-lg font-semibold mb-4'>
-                      Transaction Summary
-                    </h3>
-                    <div className='flex justify-between items-center'>
-                      <span className='text-muted-foreground flex items-center'>
-                        <DollarSign className='w-5 h-5 mr-2' />
-                        Amount:
-                      </span>
-                      <span className='font-medium'>
-                        {form.getValues("amount")} BTC
-                      </span>
-                    </div>
-                    <div className='flex justify-between items-center'>
-                      <span className='text-muted-foreground flex items-center'>
-                        <Building className='w-5 h-5 mr-2' />
-                        Provider:
-                      </span>
-                      <span className='font-medium'>
-                        {form.getValues("provider")}
-                      </span>
-                    </div>
-                    <div className='flex justify-between items-center'>
-                      <span className='text-muted-foreground flex items-center'>
-                        <CreditCard className='w-5 h-5 mr-2' />
-                        Account:
-                      </span>
-                      <span className='font-medium'>
-                        {form.getValues("accountNumber")}
-                      </span>
-                    </div>
-                    <div className='flex justify-between items-center'>
-                      <span className='text-muted-foreground flex items-center'>
-                        <Coins className='w-5 h-5 mr-2' />
-                        You'll receive:
-                      </span>
-                      <span className='font-medium text-xl'>
-                        {(
-                          parseFloat(form.getValues("amount") || "0") * 1.25
-                        ).toFixed(2)}{" "}
-                        USD
-                      </span>
-                    </div>
-                  </div>
-                  <div className='flex items-center p-4 bg-yellow-100 rounded-lg'>
-                    <AlertCircle className='w-6 h-6 text-yellow-600 mr-3' />
-                    <p className='text-sm text-yellow-700'>
-                      Please review your transaction details carefully before
-                      submitting.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-              {step === 4 && (
-                <motion.div
-                  key='step4'
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className='space-y-6'>
-                  <div className='flex flex-col items-center justify-center py-12'>
-                    <Loader2 className='w-12 h-12 animate-spin text-primary mb-4' />
-                    <h3 className='text-lg font-semibold mb-2'>
-                      Processing Transaction
-                    </h3>
-                    <p className='text-center text-muted-foreground'>
-                      Please wait while we confirm your transaction. This may
-                      take a few moments.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </CardContent>
-          <CardFooter className='border-t p-6'>
-            <div className='flex justify-between w-full'>
+      <CardContent>
+        <form onSubmit={handleSubmit(onValidSubmit)} className='space-y-6'>
+          <div className='space-y-2'>
+            <Label htmlFor='chain'>Chain</Label>
+            <Select
+              defaultValue='CELO'
+              onValueChange={(value) => setValue("chain", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder='Select chain' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='CELO'>CELO</SelectItem>
+                {/* Add more chains as needed */}
+              </SelectContent>
+            </Select>
+            {errors.chain && (
+              <p className='text-red-500 text-sm'>{errors.chain.message}</p>
+            )}
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='token'>Token</Label>
+            <Select
+              defaultValue='CUSD'
+              onValueChange={(value) => setValue("token", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder='Select token' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='CUSD'>CUSD</SelectItem>
+                {/* Add more tokens as needed */}
+              </SelectContent>
+            </Select>
+            {errors.token && (
+              <p className='text-red-500 text-sm'>{errors.token.message}</p>
+            )}
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='amount'>Amount</Label>
+            <Input
+              id='amount'
+              type='number'
+              step='0.01'
+              placeholder='Enter amount'
+              {...register("amount", { valueAsNumber: true })}
+            />
+            {errors.amount && (
+              <p className='text-red-500 text-sm'>{errors.amount.message}</p>
+            )}
+          </div>
+
+          <div className='flex justify-between'>
+            {presetAmounts.map((preset) => (
               <Button
+                key={preset}
                 type='button'
                 variant='outline'
-                onClick={() => setStep((s) => Math.max(1, s - 1))}
-                disabled={step === 1 || isLoading}>
-                Previous
+                onClick={() => setValue("amount", preset)}
+                className='flex-1 mx-1'>
+                {preset}
               </Button>
-              <Button
-                type={step === 3 ? "submit" : "button"}
-                onClick={() => {
-                  if (step < 4) {
-                    setStep((s) => Math.min(4, s + 1));
-                  }
-                }}
-                disabled={isLoading || step === 4}
-                className='bg-[#696FFF] hover:bg-[#5158FF]'>
-                {isLoading ? (
-                  <>
-                    <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                    Processing
-                  </>
-                ) : step === 3 ? (
-                  <>
-                    Exchange Now
-                    <ArrowRight className='w-4 h-4 ml-2' />
-                  </>
-                ) : (
-                  <>
-                    Continue
-                    <ChevronRight className='w-4 h-4 ml-2' />
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardFooter>
+            ))}
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='senderAddress'>Sender Address</Label>
+            <Input
+              id='senderAddress'
+              placeholder='Enter sender address'
+              {...register("senderAddress")}
+            />
+            {errors.senderAddress && (
+              <p className='text-red-500 text-sm'>
+                {errors.senderAddress.message}
+              </p>
+            )}
+          </div>
         </form>
-      </Form>
-      <Dialog open={showQR} onOpenChange={setShowQR}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Scan QR Code</DialogTitle>
-            <DialogDescription>
-              Scan this QR code to transfer the account details.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='flex justify-center py-4'>
-            <QRCode value={JSON.stringify(form.getValues())} size={200} />
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={isConfirmationDialogOpen}
-        onOpenChange={setIsConfirmationDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Transaction Confirmed</DialogTitle>
-            <DialogDescription>
-              Your offramp request has been successfully processed and
-              confirmed.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='flex flex-col items-center justify-center py-4'>
-            <Check className='w-12 h-12 text-green-500 mb-4' />
-            <p className='text-center text-muted-foreground'>
-              Transaction ID:{" "}
-              {Math.random().toString(36).substr(2, 9).toUpperCase()}
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              setIsConfirmationDialogOpen(false);
-              setStep(1);
-              form.reset();
-            }}>
-            Close
+      </CardContent>
+      <CardFooter className='flex flex-col space-y-4'>
+        <Button
+          onClick={handleSubmit(onValidSubmit)}
+          className='w-full bg-primary hover:bg-primary/90 text-white'>
+          Create Offramp Request
+        </Button>
+        <div className='flex justify-between w-full'>
+          <Button variant='outline' onClick={onBack}>
+            Back
           </Button>
-        </DialogContent>
-      </Dialog>
+          <Button variant='ghost' onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
