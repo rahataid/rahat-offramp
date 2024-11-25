@@ -16,7 +16,12 @@ import {
 } from "@/components/ui/select"
 import { PaymentFormProps, TransactionDetails } from "@/types/offramp"
 
-export function TransakForm({ onSubmit }: PaymentFormProps) {
+interface ExtendedPaymentFormProps extends PaymentFormProps {
+  onBack: () => void
+  onCancel: () => void
+}
+
+export function TransakForm({ onSubmit, onBack, onCancel }: ExtendedPaymentFormProps) {
   const [amount, setAmount] = useState("")
   const [currency, setCurrency] = useState("USD")
   const [walletAddress, setWalletAddress] = useState("")
@@ -98,7 +103,7 @@ export function TransakForm({ onSubmit }: PaymentFormProps) {
           </div>
         </form>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col space-y-4">
         <Button 
           onClick={handleSubmit} 
           className="w-full bg-primary hover:bg-primary/90 text-white"
@@ -107,6 +112,14 @@ export function TransakForm({ onSubmit }: PaymentFormProps) {
           <QrCode className="mr-2 h-5 w-5" />
           Preview {currency} Buy
         </Button>
+        <div className="flex justify-between w-full">
+          <Button variant="outline" onClick={onBack}>
+            Back
+          </Button>
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   )

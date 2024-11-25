@@ -1,28 +1,34 @@
 import { ReactNode } from 'react'
+import { TransactionDetails, KotaniPayDetails, TransakDetails, UnlimitDetails } from '@/lib/schemas'
 
 export interface ServiceProvider {
-  id: string
-  name: string
-  logo: string
-  description: string
-  PaymentFormComponent: React.ComponentType<PaymentFormProps>
-  QRDisplayComponent: React.ComponentType<QRDisplayProps>
+  id: number;
+  uuid: string;
+  name: string;
+  logo: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  extras: {
+    fee: number;
+    supportedCurrency: string[];
+  };
 }
 
 export interface PaymentFormProps {
-  onSubmit: (details: TransactionDetails) => void
+  onSubmit: (details: TransactionDetails) => void;
+  onBack: () => void;
+  onCancel: () => void;
+  supportedCurrencies: string[];
 }
 
 export interface QRDisplayProps {
-  transactionDetails: TransactionDetails
-  onComplete: () => void
+  transactionDetails: TransactionDetails;
+  onComplete: () => void;
+  onBack: () => void;
+  onCancel: () => void;
 }
 
-export interface TransactionDetails {
-  provider: string
-  amount: number
-  currency: string
-  walletAddress: string
-  [key: string]: any // Allow for additional custom fields
-}
+export type { TransactionDetails, KotaniPayDetails, TransakDetails, UnlimitDetails }
 
