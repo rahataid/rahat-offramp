@@ -3,14 +3,41 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { OfframpStep } from "@/components/offramp-step";
 import { OfframpQR } from "@/components/offramp-qr";
-import { useExecuteOfframpRequest } from "@/lib/offramp";
+import { useExecuteOfframpRequest, useProviderAction } from "@/lib/offramp";
+import { useEffect, useState } from "react";
 
 export default function ConfirmPage() {
   const searchParams = useSearchParams();
   const providerUuid = searchParams.get("provider");
   const requestUuid = searchParams.get("request");
   const executeOfframpRequest = useExecuteOfframpRequest();
+  const [status, setStatus] = useState("pending");
+
   const router = useRouter();
+  console.log("status", status);
+
+  const providerAction = useProviderAction();
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const result = await providerAction.mutateAsync({
+          uuid: providerUuid,
+          action: "get-request-status",
+          payload: { requestUuid },
+        });
+        setStatus(result.status);
+        if (result.status === "completed") {
+          router.push("/offramp/complete");
+        }
+      } catch (error) {
+        console.error("Failed to get request status:", error);
+      }
+    };
+
+    const intervalId = setInterval(checkStatus, 5000);
+    return () => clearInterval(intervalId);
+  }, [providerUuid, requestUuid, router, providerAction]);
 
   const handleExecuteTransaction = async () => {
     if (providerUuid && requestUuid) {

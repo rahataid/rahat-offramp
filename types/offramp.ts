@@ -33,6 +33,8 @@ export interface PaymentFormProps {
   onBack: () => void;
   onCancel: () => void;
   provider: ServiceProvider;
+  providerName: string;
+  providerUuid: string;
 }
 
 export interface QRDisplayProps {
@@ -42,4 +44,3 @@ export interface QRDisplayProps {
   onCancel: () => void;
   provider: ServiceProvider;
 }
-

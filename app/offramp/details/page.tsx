@@ -9,6 +9,7 @@ import type { TransactionDetails } from "@/types/offramp";
 export default function DetailsPage() {
   const searchParams = useSearchParams();
   const providerUuid = searchParams.get("provider");
+  const providerName = searchParams.get("providerName");
   const createOfframpRequest = useCreateOfframpRequest();
   const router = useRouter();
 
@@ -36,6 +37,7 @@ export default function DetailsPage() {
         onBack={() => window.history.back()}
         onCancel={() => router.push("/offramp")}
         provider={{ uuid: providerUuid || "" }}
+        providerName={providerName || ""}
       />
     </OfframpStep>
   );

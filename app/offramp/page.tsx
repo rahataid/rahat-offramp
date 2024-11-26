@@ -38,7 +38,9 @@ export default function OfframpPage() {
             description={service.description}
             selected={false}
             onSelect={(uuid) => {
-              router.push(`/offramp/details?provider=${uuid}`);
+              router.push(
+                `/offramp/details?provider=${uuid}&providerName=${service.name}`
+              );
               // window.location.href = `/offramp/details?provider=${uuid}`;
             }}
           />
