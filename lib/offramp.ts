@@ -1,6 +1,10 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import api, { endpoints } from "@/lib/api";
-import type { ServiceProvider, OfframpRequest, ProviderAction } from "@/types/offramp";
+import type {
+  ServiceProvider,
+  OfframpRequest,
+  ProviderAction,
+} from "@/types/offramp";
 
 export const useListOfframpProviders = () => {
   return useQuery<ServiceProvider[], Error>({
@@ -22,9 +26,17 @@ export const useCreateOfframpRequest = () => {
 };
 
 export const useExecuteOfframpRequest = () => {
-  return useMutation<any, Error, { providerUuid: string; requestUuid: string; data: any }>({
+  return useMutation<
+    any,
+    Error,
+    { providerUuid: string; requestUuid: string; data: any }
+  >({
     mutationFn: async ({ providerUuid, requestUuid, data }) => {
-      const res = await api.post(endpoints.offramps.execute, { providerUuid, requestUuid, data });
+      const res = await api.post(endpoints.offramps.execute, {
+        providerUuid,
+        requestUuid,
+        data,
+      });
       return res.data;
     },
   });
@@ -38,4 +50,3 @@ export const useProviderAction = () => {
     },
   });
 };
-

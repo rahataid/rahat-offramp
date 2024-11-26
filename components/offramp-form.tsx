@@ -29,6 +29,7 @@ const offrampSchema = z.object({
   token: z.string().min(1, "Token is required"),
   amount: z.number().positive("Amount must be greater than 0"),
   senderAddress: z.string().min(1, "Sender address is required"),
+  providerUuid: z.string().min(1, "Provider is required"),
 });
 
 export function OfframpForm({
@@ -46,7 +47,7 @@ export function OfframpForm({
   } = useForm<TransactionDetails>({
     resolver: zodResolver(offrampSchema),
     defaultValues: {
-      providerUuid: provider.uuid,
+      providerUuid: provider?.uuid,
       chain: "CELO",
       token: "CUSD",
     },

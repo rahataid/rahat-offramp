@@ -34,6 +34,7 @@ export default function OfframpFlow() {
 
   const handleTransactionSubmit = async (details: TransactionDetails) => {
     try {
+      console.log("details", details);
       const result = await createOfframpRequest.mutateAsync(details);
       setTransactionDetails({ ...details, requestUuid: result.id });
       setStep(3);
