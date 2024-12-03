@@ -50,8 +50,6 @@ export function OfframpForm({
     resolver: zodResolver(offrampSchema),
     defaultValues: {
       providerUuid: provider?.uuid,
-      chain: "CELO",
-      token: "CUSD",
     },
   });
 
@@ -74,6 +72,7 @@ export function OfframpForm({
             setValue={setValue}
             register={register}
             errors={errors}
+            watch={watch}
             presetAmounts={presetAmounts}
             key={provider.uuid}
           />

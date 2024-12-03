@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Label } from "./ui/label";
 import {
   Select,
@@ -9,18 +9,50 @@ import {
 } from "./ui/select";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { useProviderAction } from "@/lib/offramp";
+import { useSearchParams } from "next/navigation";
 
 const KotaniPayForm = ({
   register,
   setValue,
   errors,
   presetAmounts,
+  watch,
 }: {
   register: any;
   setValue: any;
   errors: any;
   presetAmounts: number[];
+  watch: any;
 }) => {
+  const searchParams = useSearchParams();
+
+  const providerUuid = searchParams.get("provider");
+
+  const [supportedChains, setSupportedChains] = React.useState<
+    Record<string, string[]>
+  >({
+    STELLAR: ["USDC"],
+    CELO: ["cUSD"],
+    TRON: ["USDT", "USDC"],
+    FUSE: ["USDT", "USDC"],
+    AVALANCHE: ["USDC"],
+  });
+  const offrampActions = useProviderAction();
+
+  useEffect(() => {
+    const fetchSupportedChains = async () => {
+      const chainResponse = await offrampActions.mutateAsync({
+        action: "get-supported-chains",
+        uuid: providerUuid,
+        payload: {},
+      });
+      setSupportedChains(chainResponse.data);
+    };
+    fetchSupportedChains();
+  }, []);
+  console.log('supportedChains[register("chain").value]', watch("chain"));
+
   return (
     <>
       <div className='space-y-2'>
@@ -32,8 +64,11 @@ const KotaniPayForm = ({
             <SelectValue placeholder='Select chain' />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='CELO'>CELO</SelectItem>
-            {/* Add more chains as needed */}
+            {Object.keys(supportedChains).map((chain) => (
+              <SelectItem key={chain} value={chain}>
+                {chain}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {errors.chain && (
@@ -50,8 +85,11 @@ const KotaniPayForm = ({
             <SelectValue placeholder='Select token' />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='CUSD'>CUSD</SelectItem>
-            {/* Add more tokens as needed */}
+            {supportedChains[watch("chain")]?.map((token) => (
+              <SelectItem key={token} value={token}>
+                {token}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {errors.token && (
