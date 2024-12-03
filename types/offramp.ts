@@ -43,4 +43,23 @@ export interface QRDisplayProps {
   onBack: () => void;
   onCancel: () => void;
   provider: ServiceProvider;
+  qrCodeValue: string;
+}
+
+export interface SingleOfframpRequest {
+  amount: number;
+  chain: string;
+  createdAt: string;
+  createdBy: string | null;
+  deletedAt: string | null;
+  escrowAddress: string;
+  extras: any | null;
+  id: number;
+  requestId: string;
+  senderAddress: string;
+  status: string;
+  token: string;
+  updatedAt: string;
+  updatedBy: string | null;
+  uuid: string;
 }

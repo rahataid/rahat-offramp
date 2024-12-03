@@ -3,7 +3,11 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { OfframpStep } from "@/components/offramp-step";
 import { OfframpQR } from "@/components/offramp-qr";
-import { useExecuteOfframpRequest, useProviderAction } from "@/lib/offramp";
+import {
+  useExecuteOfframpRequest,
+  useGetSingleOfframpRequest,
+  useProviderAction,
+} from "@/lib/offramp";
 import { useEffect, useState } from "react";
 
 export default function ConfirmPage() {
@@ -14,30 +18,32 @@ export default function ConfirmPage() {
   const [status, setStatus] = useState("pending");
 
   const router = useRouter();
-  console.log("status", status);
+  const singleOfframpRequest = useGetSingleOfframpRequest({
+    requestId: requestUuid as string,
+  });
 
   const providerAction = useProviderAction();
 
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const result = await providerAction.mutateAsync({
-          uuid: providerUuid,
-          action: "get-request-status",
-          payload: { requestUuid },
-        });
-        setStatus(result.status);
-        if (result.status === "completed") {
-          router.push("/offramp/complete");
-        }
-      } catch (error) {
-        console.error("Failed to get request status:", error);
-      }
-    };
+  // useEffect(() => {
+  //   const checkStatus = async () => {
+  //     try {
+  //       const result = await providerAction.mutateAsync({
+  //         uuid: providerUuid,
+  //         action: "check-offramp-status",
+  //         payload: { requestUuid },
+  //       });
+  //       setStatus(result.status);
+  //       // if (result.status === "completed") {
+  //       //   router.push("/offramp/complete");
+  //       // }
+  //     } catch (error) {
+  //       console.error("Failed to get request status:", error);
+  //     }
+  //   };
 
-    const intervalId = setInterval(checkStatus, 5000);
-    return () => clearInterval(intervalId);
-  }, [providerUuid, requestUuid, router, providerAction]);
+  //   const intervalId = setInterval(checkStatus, 5000);
+  //   return () => clearInterval(intervalId);
+  // }, [providerUuid, requestUuid, router, providerAction]);
 
   const handleExecuteTransaction = async () => {
     if (providerUuid && requestUuid) {
@@ -64,17 +70,25 @@ export default function ConfirmPage() {
     }
   };
 
+  if (singleOfframpRequest.isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <OfframpStep
       title='Review and Confirm'
       description='Verify your transaction details and execute the offramp request.'>
       <OfframpQR
-        transactionDetails={{ requestUuid: requestUuid || "" }}
+        transactionDetails={{
+          requestUuid: requestUuid || "",
+          ...singleOfframpRequest?.data,
+        }}
         onComplete={handleExecuteTransaction}
         onBack={() => window.history.back()}
         onCancel={() => router.push("/offramp")}
         // window.location.href = '/offramp'}
         provider={{ uuid: providerUuid || "" }}
+        qrCodeValue={singleOfframpRequest?.data?.escrowAddress || ""}
       />
     </OfframpStep>
   );

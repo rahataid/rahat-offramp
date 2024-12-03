@@ -4,6 +4,7 @@ import type {
   ServiceProvider,
   OfframpRequest,
   ProviderAction,
+  SingleOfframpRequest,
 } from "@/types/offramp";
 
 export const useListOfframpProviders = () => {
@@ -47,6 +48,22 @@ export const useProviderAction = () => {
     mutationFn: async (action) => {
       const res = await api.post(endpoints.offramps.providers.actions, action);
       return res.data;
+    },
+  });
+};
+
+export const useGetSingleOfframpRequest = (payload: {
+  uuid?: string;
+  id?: number;
+  requestId?: string;
+}) => {
+  return useQuery<SingleOfframpRequest, Error>({
+    queryKey: ["singleOfframpRequest", payload],
+    queryFn: async () => {
+      const res = await api.get(endpoints.offramps.single, {
+        params: payload,
+      });
+      return res.data?.data;
     },
   });
 };

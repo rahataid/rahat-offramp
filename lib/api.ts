@@ -11,10 +11,10 @@ export const endpoints = {
     create: "/offramps",
     execute: "/offramps/execute",
     list: "/offramps",
+    single: `/offramps/single`,
     providers: {
       list: "/offramps/providers",
       actions: "/offramps/providers/actions",
     },
   },
 };
-
