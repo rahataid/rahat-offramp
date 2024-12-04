@@ -1,15 +1,20 @@
 "use client";
 
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { OfframpLayout } from "@/components/offramp-layout";
-import { Button } from "@/components/ui/button";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useContractWrite, useWaitForTransaction } from "wagmi";
-import { parseUnits } from "viem";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
-import { getProviderById } from "@/providers";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  useExecuteOfframpRequest,
+  useGetSingleOfframpRequest,
+  useListOfframpProviders,
+} from "@/lib/offramp";
+import { getProviderBySlug } from "@/providers";
+import { ConnectKitButton } from "connectkit";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAccount, useSendTransaction } from "wagmi";
 
 const ERC20_ABI = [
   {
@@ -29,11 +34,31 @@ export default function SendPage() {
   const searchParams = useSearchParams();
   const { address } = useAccount();
 
+  const requestId = searchParams.get("requestId");
   const providerId = searchParams.get("provider");
-  const provider = providerId ? getProviderById(providerId) : null;
   const amount = searchParams.get("amount") || "0";
   const token = searchParams.get("token");
+  const chain = searchParams.get("chain");
 
+  const executeRequest = useExecuteOfframpRequest();
+  const sendTransaction = useSendTransaction({});
+  const providers = useListOfframpProviders();
+
+  const requestData = useGetSingleOfframpRequest({
+    requestId,
+  });
+
+  const provider = providerId
+    ? getProviderBySlug(providerId, providers.data)
+    : null;
+
+  // useEffect(() => {
+  //   if (sendTransaction.data) {
+  //     setHash(sendTransaction.hash)
+  //   }
+  // }, [sendTransaction.data, sendTransaction.isPending])
+
+  console.log("sendT", sendTransaction.data);
   // const { data: hash, write } = useContractWrite({
   //   address: '0x...' as `0x${string}`, // Token contract address
   //   abi: ERC20_ABI,
@@ -51,6 +76,12 @@ export default function SendPage() {
         token,
         address,
       });
+      sendTransaction.sendTransaction({
+        value: BigInt(amount),
+        account: address,
+        to: requestData?.data?.escrowAddress,
+        token: token,
+      });
 
       // write({
       //   args: [
@@ -63,9 +94,31 @@ export default function SendPage() {
     }
   };
 
-  if (true) {
-    router.push(`/status?txHash=${123}`);
-  }
+  const handleExecuteOfframRequest = async () => {
+    try {
+      console.log("Executing offramp request...", {
+        providerUuid: provider.uuid,
+        requestUuid: requestData?.data?.uuid,
+        data: {},
+      });
+      executeRequest.mutate({
+        chain,
+        token,
+        providerUuid: provider.uuid,
+        transaction_hash: sendTransaction.data as `0x${string}`,
+        customer_key: "123",
+        request_id: requestId,
+        wallet_id: "123",
+        requestUuid: requestData?.data?.uuid,
+      });
+    } catch (error) {
+      console.error("Offramp request failed:", error);
+    }
+  };
+
+  // if (true) {
+  //   router.push(`/status?txHash=${123}`);
+  // }
 
   if (!provider) {
     return <div>Invalid provider</div>;
@@ -88,6 +141,7 @@ export default function SendPage() {
         <Card>
           <CardContent className='p-6'>
             <div className='grid gap-4'>
+              <ConnectKitButton />
               <Alert>
                 <AlertDescription>
                   Please send exactly {amount} {token} to the following address
@@ -99,7 +153,7 @@ export default function SendPage() {
                 whileHover={{ scale: 1.05 }}
                 className='p-4 bg-muted rounded-lg break-all text-center cursor-pointer'
                 onClick={() => navigator.clipboard.writeText("0x...")}>
-                0x... {/* Recipient address */}
+                {requestData?.data?.escrowAddress}
               </motion.div>
 
               <div className='space-y-2'>
@@ -117,21 +171,33 @@ export default function SendPage() {
               className='w-full'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}>
-              <Button
-                onClick={handleSend}
-                // disabled={isLoading}
-                size='lg'
-                className='w-full'>
-                {/* {isLoading ? ( */}
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Confirming Transaction
-                </>
-                {/* </>
-                ) : (
-                  "Send Crypto"
-                )} */}
-              </Button>
+              {sendTransaction.data && (
+                <Button
+                  onClick={handleExecuteOfframRequest}
+                  // onClick={() =>
+                  //   router.push(`/status?txHash=${sendTransaction.data?.hash}`)
+                  // }
+                  size='lg'
+                  className='w-full'>
+                  Execute Offramp
+                </Button>
+              )}
+              {!sendTransaction.data && (
+                <Button
+                  onClick={handleSend}
+                  // disabled={isLoading}
+                  size='lg'
+                  className='w-full'>
+                  {sendTransaction.isPending ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Confirming Transaction
+                    </>
+                  ) : (
+                    "Send Crypto"
+                  )}
+                </Button>
+              )}
             </motion.div>
           </CardFooter>
         </Card>

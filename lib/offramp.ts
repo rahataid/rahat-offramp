@@ -1,42 +1,75 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import api, { endpoints } from "@/lib/api";
-import type {
-  ServiceProvider,
-  OfframpRequest,
-  ProviderAction,
-  SingleOfframpRequest,
-} from "@/types/offramp";
+import providers, { joinLocalAndApiProviders } from "@/providers";
+// import type {
+//   ServiceProvider,
+//   OfframpRequest,
+//   ProviderAction,
+//   SingleOfframpRequest,
+// } from "@/types/offramp";
 
 export const useListOfframpProviders = () => {
-  return useQuery<ServiceProvider[], Error>({
+  return useQuery({
     queryKey: ["offrampProviders"],
     queryFn: async () => {
       const res = await api.get(endpoints.offramps.providers.list);
-      return res.data.data;
+      const sluggedData = res.data?.data.map((d) => {
+        const slug = d.name.toLowerCase().replace(/\s/g, "") + "Provider";
+        return {
+          ...d,
+          slug,
+        };
+      });
+      const joined = joinLocalAndApiProviders(sluggedData || []);
+      return joined || [];
     },
   });
 };
 
 export const useCreateOfframpRequest = () => {
-  return useMutation<OfframpRequest, Error, Omit<OfframpRequest, "id">>({
+  return useMutation<any, Error, Omit<any, "id">>({
     mutationFn: async (request) => {
       const res = await api.post(endpoints.offramps.create, request);
       return res.data;
     },
   });
 };
-
 export const useExecuteOfframpRequest = () => {
   return useMutation<
     any,
     Error,
-    { providerUuid: string; requestUuid: string; data: any }
+    {
+      providerUuid: string;
+      requestUuid: string;
+      chain: string;
+      token: string;
+      transaction_hash: string;
+      wallet_id: string;
+      request_id: string;
+      customer_key: string;
+    }
   >({
-    mutationFn: async ({ providerUuid, requestUuid, data }) => {
+    mutationFn: async ({
+      providerUuid,
+      requestUuid,
+      chain,
+      token,
+      transaction_hash,
+      wallet_id,
+      request_id,
+      customer_key,
+    }) => {
       const res = await api.post(endpoints.offramps.execute, {
         providerUuid,
         requestUuid,
-        data,
+        data: {
+          chain,
+          token,
+          transaction_hash,
+          wallet_id,
+          request_id,
+          customer_key,
+        },
       });
       return res.data;
     },
@@ -44,7 +77,7 @@ export const useExecuteOfframpRequest = () => {
 };
 
 export const useProviderAction = () => {
-  return useMutation<any, Error, ProviderAction>({
+  return useMutation<any, Error, any>({
     mutationFn: async (action) => {
       const res = await api.post(endpoints.offramps.providers.actions, action);
       return res.data;
@@ -57,7 +90,7 @@ export const useGetSingleOfframpRequest = (payload: {
   id?: number;
   requestId?: string;
 }) => {
-  return useQuery<SingleOfframpRequest, Error>({
+  return useQuery<any, Error>({
     queryKey: ["singleOfframpRequest", payload],
     queryFn: async () => {
       const res = await api.get(endpoints.offramps.single, {
