@@ -37,6 +37,7 @@ export default function DetailsPage() {
   const handleSubmit = async (data: ProviderFormData) => {
     setFormData(data);
     const params = new URLSearchParams(searchParams);
+    console.log("data", data);
     try {
       await createOfframpRequest
         .mutateAsync({
@@ -57,7 +58,6 @@ export default function DetailsPage() {
     } catch (error) {
       console.log("error", error);
     }
-    console.log("params", params, data);
   };
 
   const FormComponent = provider.FormComponent;

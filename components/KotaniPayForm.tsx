@@ -1,4 +1,9 @@
-import { KotanipayWalletCreationModal } from "@/components/kotanipay-wallet-create-form";
+import { useState, useEffect } from "react";
+import { OfframpProvider, OfframpFormProps } from "@/types/provider";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -8,79 +13,62 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  useCreateCustomerMobileMoneyWallet,
-  useGetCustomerMobileMoneyWalletByPhone,
-} from "@/lib/offramp";
-import { OfframpFormProps, OfframpProvider } from "@/types/provider";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDebounce } from "use-debounce";
-import { z } from "zod";
+import { AccountCreationModal } from "./AccountCreationModal";
 
 const formSchema = z.object({
-  // countryCode: z.string().min(1, "Country code is required"),
+  countryCode: z.string().min(1, "Country code is required"),
   phoneNumber: z.string().min(10, "Valid phone number required"),
   amount: z.string().min(1, "Amount must be greater than 0"),
 });
+
+async function checkWalletInfo(countryCode: string, phoneNumber: string) {
+  // Replace this with your actual API call
+  const response = await fetch(`/api/check-wallet?countryCode=${countryCode}&phoneNumber=${phoneNumber}`);
+  if (!response.ok) {
+    throw new Error("Wallet not found");
+  }
+  return response.json();
+}
+
+async function createAccount(data: z.infer<typeof formSchema>) {
+  // Replace this with your actual API call
+  const response = await fetch("/api/create-account", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to create account");
+  }
+  return response.json();
+}
 
 function KotaniPayForm({ onSubmit }: OfframpFormProps) {
   const [walletInfo, setWalletInfo] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const getCustomerWalletByPhone = useGetCustomerMobileMoneyWalletByPhone();
-  const createCustomerWallet = useCreateCustomerMobileMoneyWallet();
-  const searchParams = useSearchParams();
-  const providerUuid = searchParams.get("providerUuid");
-  const chain = searchParams.get("chain");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      // countryCode: "",
+      countryCode: "",
       phoneNumber: "",
       amount: "",
     },
   });
 
-  async function checkWalletInfo(phoneNumber: string) {
-    const walletInfo = await getCustomerWalletByPhone.mutateAsync({
-      providerUuid,
-      payload: {
-        phone_number: phoneNumber,
-      },
-    });
-    return walletInfo;
-  }
-  async function createAccount(data: z.infer<typeof formSchema>) {
-    // Replace this with your actual API call
-    await createCustomerWallet.mutateAsync({
-      providerUuid,
-      payload: {
-        phone_number: data.phone_code + data.phone_number,
-        country_code: data.country_code,
-        network: data.network,
-        account_name: data.account_name,
-      },
-    });
-  }
-
   const countryCode = form.watch("countryCode");
   const phoneNumber = form.watch("phoneNumber");
   const [debouncedCountryCode] = useDebounce(countryCode, 500);
-  const [debouncedPhoneNumber] = useDebounce(phoneNumber, 100);
-
-  console.log("first", form.formState.errors);
+  const [debouncedPhoneNumber] = useDebounce(phoneNumber, 500);
 
   useEffect(() => {
-    if (debouncedPhoneNumber) {
+    if (debouncedCountryCode && debouncedPhoneNumber) {
       setIsLoading(true);
-      checkWalletInfo(debouncedPhoneNumber)
+      checkWalletInfo(debouncedCountryCode, debouncedPhoneNumber)
         .then((info) => {
-          console.log("info", info);
           setWalletInfo(info);
           setIsLoading(false);
         })
@@ -89,7 +77,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           setIsLoading(false);
         });
     }
-  }, [debouncedPhoneNumber]);
+  }, [debouncedCountryCode, debouncedPhoneNumber]);
 
   const handleCreateAccount = async (data: z.infer<typeof formSchema>) => {
     try {
@@ -103,10 +91,31 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name='phoneNumber'
+          name="countryCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Country Code</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select country code" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="GHA">Ghana (+233)</SelectItem>
+                  {/* Add more country codes as needed */}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="phoneNumber"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Phone Number</FormLabel>
@@ -120,27 +129,18 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         {isLoading && <p>Checking wallet info...</p>}
         {walletInfo ? (
           <div>
-            <h3 className='font-bold'>Wallet Info</h3>
-            {walletInfo &&
-              Object.keys(walletInfo).map((key) => (
-                <p key={key}>
-                  {/* remove underscore as well */}
-                  {key
-                    .split("_")
-                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(" ")}
-                  : {walletInfo[key]}
-                </p>
-              ))}
+            <h3>Wallet Info</h3>
+            <p>Account Name: {walletInfo.accountName}</p>
+            <p>Balance: {walletInfo.balance}</p>
           </div>
         ) : (
-          <Button type='button' onClick={() => setIsModalOpen(true)}>
+          <Button type="button" onClick={() => setIsModalOpen(true)}>
             Create Account
           </Button>
         )}
         <FormField
           control={form.control}
-          name='amount'
+          name="amount"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Amount to send</FormLabel>
@@ -151,11 +151,11 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
             </FormItem>
           )}
         />
-        <Button type='submit' className='w-full mt-2'>
+        <Button type="submit" className="w-full mt-2">
           Submit
         </Button>
       </form>
-      <KotanipayWalletCreationModal
+      <AccountCreationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateAccount}
@@ -172,3 +172,4 @@ export const kotanipayProvider: OfframpProvider = {
   supportedTokens: ["USDC", "USDT"],
   FormComponent: KotaniPayForm,
 };
+

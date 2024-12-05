@@ -100,3 +100,45 @@ export const useGetSingleOfframpRequest = (payload: {
     },
   });
 };
+
+export const useGetCustomerMobileMoneyWalletByPhone = () => {
+  const providerAction = useProviderAction();
+  return useMutation({
+    mutationKey: ["get-customer-wallet-by-phone"],
+    mutationFn: async (data: {
+      providerUuid: string;
+      payload: {
+        phone_number: string;
+      };
+    }) => {
+      const res = await providerAction.mutateAsync({
+        uuid: data.providerUuid,
+        action: "get-customer-wallet-by-phone",
+        payload: data.payload,
+      });
+      return res?.data?.data || {};
+    },
+  });
+};
+export const useCreateCustomerMobileMoneyWallet = () => {
+  const providerAction = useProviderAction();
+  return useMutation({
+    mutationKey: ["create-customer-mobile-wallet"],
+    mutationFn: async (data: {
+      providerUuid: string;
+      payload: {
+        country_code: string;
+        phone_number: string;
+        network: string;
+        account_name: string;
+      };
+    }) => {
+      const res = await providerAction.mutateAsync({
+        uuid: data.providerUuid,
+        action: "create-customer-mobile-wallet",
+        payload: data.payload,
+      });
+      return res?.data?.data || {};
+    },
+  });
+};
