@@ -10,9 +10,7 @@ export const providers: OfframpProvider[] = [
 
 export const joinLocalAndApiProviders = (apiProviders: OfframpProvider[]) => {
   return providers.map((localProvider) => {
-    console.log("localProvider", localProvider);
     const apiProvider = apiProviders.find((p) => p.slug === localProvider.id);
-    console.log("apiProvider", apiProvider);
     return {
       ...localProvider,
       ...apiProvider,

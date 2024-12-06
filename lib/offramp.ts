@@ -142,3 +142,18 @@ export const useCreateCustomerMobileMoneyWallet = () => {
     },
   });
 };
+
+export const useGetFiatWallets = (providerUuid: string) => {
+  const providerAction = useProviderAction();
+  return useQuery({
+    queryKey: ["get-fiat-wallet"],
+    queryFn: async () => {
+      const res = await providerAction.mutateAsync({
+        uuid: providerUuid,
+        action: "get-fiat-wallet",
+      });
+      console.log("res", res);
+      return res?.data || {};
+    },
+  });
+};

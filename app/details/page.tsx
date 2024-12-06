@@ -53,6 +53,7 @@ export default function DetailsPage() {
               params.append(key, value);
             }
           );
+          params.append("phone_number", data.phoneNumber);
           router.push(`/send?${params.toString()}`);
         });
     } catch (error) {
