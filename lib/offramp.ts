@@ -157,3 +157,24 @@ export const useGetFiatWallets = (providerUuid: string) => {
     },
   });
 };
+
+export const useCheckOfframpStatus = () => {
+  const providerAction = useProviderAction();
+  return useMutation({
+    mutationKey: ["check-offramp-status"],
+
+    mutationFn: async (data: {
+      providerUuid: string;
+      payload: {
+        request_id: string;
+      };
+    }) => {
+      const res = await providerAction.mutateAsync({
+        uuid: data.providerUuid,
+        action: "check-offramp-status",
+        payload: data.payload,
+      });
+      return res?.data || {};
+    },
+  });
+};

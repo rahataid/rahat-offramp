@@ -105,11 +105,6 @@ export default function SendPage() {
     }
     const walletToUse = fiatWallets?.data?.[0]?.id;
     try {
-      console.log("Executing offramp request...", {
-        providerUuid: provider.uuid,
-        requestUuid: requestData?.data?.uuid,
-        data: {},
-      });
       executeRequest.mutate({
         chain,
         token,
@@ -139,9 +134,9 @@ export default function SendPage() {
     fetchWallet();
   }, [phoneNumber, providerUuid]);
 
-  // if (true) {
-  //   router.push(`/status?txHash=${123}`);
-  // }
+  if (executeRequest.isSuccess) {
+    router.push(`/status?referenceId=${123}&providerUuid=${providerUuid}`);
+  }
 
   if (!provider) {
     return <div>Invalid provider</div>;
