@@ -10,6 +10,7 @@ import { getProviderBySlug } from "@/providers";
 import { ProviderFormData } from "@/types/provider";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { parseEther, parseUnits } from "viem";
 import { useAccount } from "wagmi";
 
 export default function DetailsPage() {
@@ -33,6 +34,8 @@ export default function DetailsPage() {
   if (!provider) {
     return <div>Invalid provider</div>;
   }
+
+  console.log();
 
   const handleSubmit = async (data: ProviderFormData) => {
     setFormData(data);

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useCheckOfframpStatus } from "@/lib/offramp";
+import { formatCasesToReadable } from "@/utils/formatCasesToReadable";
 
 // This is a mock function. In a real application, you would implement
 // actual blockchain event listening logic here.
@@ -85,6 +86,12 @@ export default function StatusPage() {
               )}
               <h3 className='text-2xl font-medium capitalize'>{status}</h3>
               <p className='text-muted-foreground'>
+                {offRampStatus.isSuccess &&
+                  Object.keys(offRampStatus.data).map((key) => (
+                    <p key={key}>
+                      {formatCasesToReadable(key)}: {offRampStatus.data[key]}
+                    </p>
+                  ))}
                 {JSON.stringify(offRampStatus.data, null, 2)}
               </p>
               {status === "completed" && (

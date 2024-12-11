@@ -14,6 +14,7 @@ import {
   useGetCustomerMobileMoneyWalletByPhone,
 } from "@/lib/offramp";
 import { OfframpFormProps, OfframpProvider } from "@/types/provider";
+import { formatCasesToReadable } from "@/utils/formatCasesToReadable";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -124,12 +125,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
             {walletInfo &&
               Object.keys(walletInfo).map((key) => (
                 <p key={key}>
-                  {/* remove underscore as well */}
-                  {key
-                    .split("_")
-                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(" ")}
-                  : {walletInfo[key]}
+                  {formatCasesToReadable(key)}: {walletInfo[key]}
                 </p>
               ))}
           </div>

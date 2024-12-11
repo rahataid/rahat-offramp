@@ -17,7 +17,13 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAccount, useSendTransaction } from "wagmi";
+import { erc20Abi, parseEther, parseUnits } from "viem";
+import {
+  useAccount,
+  useChainId,
+  useSendTransaction,
+  useWriteContract,
+} from "wagmi";
 
 const ERC20_ABI = [
   {
@@ -31,6 +37,21 @@ const ERC20_ABI = [
     type: "function",
   },
 ];
+
+const TOKENS = {
+  USDC: {
+    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Example: USDC contract address
+    decimals: 6,
+  },
+  USDT: {
+    address: "0xdac17f958d2ee523a2206206994597c13d831ec7", // Example: USDT contract address
+    decimals: 6,
+  },
+  DAI: {
+    address: "0x6b175474e89094c44da98b954eedeac495271d0f", // Example: DAI contract address
+    decimals: 18,
+  },
+};
 
 export default function SendPage() {
   const router = useRouter();
@@ -50,7 +71,9 @@ export default function SendPage() {
   const providers = useListOfframpProviders();
   const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
   const fiatWallets = useGetFiatWallets(providerUuid);
-  console.log("fiatWallets?.data", fiatWallets?.data);
+  const chainId = useChainId();
+  const tokenData = token ? TOKENS[token] : null;
+  const decimals = tokenData?.decimals || 18;
 
   const [userWallet, setUserWallet] = useState(null);
 
@@ -58,6 +81,7 @@ export default function SendPage() {
     requestId,
   });
 
+  const sendTokenTransaction = useWriteContract();
   const provider = providerId
     ? getProviderBySlug(providerId, providers.data)
     : null;
@@ -68,7 +92,6 @@ export default function SendPage() {
   //   }
   // }, [sendTransaction.data, sendTransaction.isPending])
 
-  console.log("sendT", requestData, userWallet);
   // const { data: hash, write } = useContractWrite({
   //   address: '0x...' as `0x${string}`, // Token contract address
   //   abi: ERC20_ABI,
@@ -80,12 +103,24 @@ export default function SendPage() {
   const handleSend = async () => {
     // todo: here add create offramp and add
     try {
-      sendTransaction.sendTransaction({
-        value: BigInt(amount),
-        account: address,
-        to: requestData?.data?.escrowAddress,
-        token: token,
-      });
+      const d = {
+        address: tokenData?.address,
+        abi: erc20Abi,
+        functionName: "transfer",
+        args: [
+          requestData?.data?.escrowAddress, // Replace with the recipient address
+          // amount,
+          parseUnits(amount, decimals),
+        ],
+      };
+      console.log("d", d);
+      await sendTokenTransaction.writeContractAsync(d);
+      // sendTransaction.sendTransaction({
+      //   value: parseEther(amount),
+      //   account: address,
+      //   to: requestData?.data?.escrowAddress,
+      //   token: "USDC",
+      // });
 
       // write({
       //   args: [
