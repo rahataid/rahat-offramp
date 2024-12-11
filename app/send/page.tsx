@@ -17,26 +17,14 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { erc20Abi, parseEther, parseUnits } from "viem";
+import { erc20Abi, parseUnits } from "viem";
 import {
   useAccount,
   useChainId,
   useSendTransaction,
+  useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
-
-const ERC20_ABI = [
-  {
-    constant: false,
-    inputs: [
-      { name: "_to", type: "address" },
-      { name: "_value", type: "uint256" },
-    ],
-    name: "transfer",
-    outputs: [{ name: "", type: "bool" }],
-    type: "function",
-  },
-];
 
 const TOKENS = {
   USDC: {
@@ -54,6 +42,9 @@ const TOKENS = {
 };
 
 export default function SendPage() {
+  const [userWallet, setUserWallet] = useState(null);
+  const [txHash, setTxHash] = useState<`0x${string}`>();
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { address } = useAccount();
@@ -72,10 +63,14 @@ export default function SendPage() {
   const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
   const fiatWallets = useGetFiatWallets(providerUuid);
   const chainId = useChainId();
+  const waitFroTransaction = useWaitForTransactionReceipt({
+    hash: txHash as `0x${string}`,
+  });
+
+  console.log("waitFroTransaction", waitFroTransaction.data);
+
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
-
-  const [userWallet, setUserWallet] = useState(null);
 
   const requestData = useGetSingleOfframpRequest({
     requestId,
@@ -85,20 +80,6 @@ export default function SendPage() {
   const provider = providerId
     ? getProviderBySlug(providerId, providers.data)
     : null;
-
-  // useEffect(() => {
-  //   if (sendTransaction.data) {
-  //     setHash(sendTransaction.hash)
-  //   }
-  // }, [sendTransaction.data, sendTransaction.isPending])
-
-  // const { data: hash, write } = useContractWrite({
-  //   address: '0x...' as `0x${string}`, // Token contract address
-  //   abi: ERC20_ABI,
-  //   functionName: 'transfer',
-  // })
-
-  // const { isLoading, isSuccess } = useWaitForTransaction({ hash })
 
   const handleSend = async () => {
     // todo: here add create offramp and add
@@ -121,13 +102,6 @@ export default function SendPage() {
       //   to: requestData?.data?.escrowAddress,
       //   token: "USDC",
       // });
-
-      // write({
-      //   args: [
-      //     '0x...', // Recipient address
-      //     parseUnits(amount, 6), // Assuming USDC/USDT with 6 decimals
-      //   ],
-      // })
     } catch (error) {
       console.error("Transaction failed:", error);
     }
@@ -144,7 +118,8 @@ export default function SendPage() {
         chain,
         token,
         providerUuid: provider.uuid,
-        transaction_hash: sendTransaction.data as `0x${string}`,
+        transaction_hash: waitFroTransaction.data
+          ?.transactionHash as `0x${string}`,
         customer_key: userWallet?.customer_key,
         request_id: requestId,
         wallet_id: walletToUse,
@@ -168,6 +143,11 @@ export default function SendPage() {
     };
     fetchWallet();
   }, [phoneNumber, providerUuid]);
+
+  useEffect(() => {
+    if (!sendTokenTransaction.data) return;
+    setTxHash(sendTokenTransaction.data);
+  }, [sendTokenTransaction.data, sendTransaction.data]);
 
   if (executeRequest.isSuccess) {
     router.push(`/status?referenceId=${123}&providerUuid=${providerUuid}`);
@@ -224,7 +204,7 @@ export default function SendPage() {
               className='w-full'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}>
-              {sendTransaction.data && (
+              {waitFroTransaction.data && (
                 <Button
                   onClick={handleExecuteOfframRequest}
                   // onClick={() =>
@@ -232,16 +212,23 @@ export default function SendPage() {
                   // }
                   size='lg'
                   className='w-full'>
-                  Execute Offramp
+                  {executeRequest.isPending ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Executing Offramp
+                    </>
+                  ) : (
+                    "Execute Offramp"
+                  )}
                 </Button>
               )}
-              {!sendTransaction.data && (
+              {!sendTokenTransaction.data && (
                 <Button
                   onClick={handleSend}
                   // disabled={isLoading}
                   size='lg'
                   className='w-full'>
-                  {sendTransaction.isPending ? (
+                  {waitFroTransaction.isLoading || sendTransaction.isPending ? (
                     <>
                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                       Confirming Transaction
