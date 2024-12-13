@@ -9,6 +9,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { OFFRAMP_NETWORK, OFFRAMP_TOKEN } from "@/config/constants";
 
 const networks = [
   {
@@ -53,15 +54,10 @@ export default function NetworkPage() {
   const provider = searchParams.get("provider");
   const providerUuid = searchParams.get("providerUuid");
 
-  const [selectedChain, setSelectedChain] = useState<number>();
-  const [selectedToken, setSelectedToken] = useState<string>();
-
   const handleContinue = () => {
-    if (selectedChain && selectedToken) {
-      router.push(
-        `/details?provider=${provider}&chain=${selectedChain}&token=${selectedToken}&providerUuid=${providerUuid}`
-      );
-    }
+    router.push(
+      `/details?provider=${provider}&chain=${OFFRAMP_NETWORK}&token=${OFFRAMP_TOKEN}&providerUuid=${providerUuid}`
+    );
   };
 
   return (
@@ -84,67 +80,31 @@ export default function NetworkPage() {
               <div>
                 <h3 className='font-medium mb-4'>Select Network</h3>
                 <div className='grid grid-cols-2 gap-4'>
-                  {networks.map((network) => (
-                    <motion.div
-                      key={network.id}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant={
-                          selectedChain === network.symbol
-                            ? "default"
-                            : "outline"
-                        }
-                        className='w-full h-auto p-4 flex items-center gap-3'
-                        onClick={() => setSelectedChain(network.symbol)}>
-                        <Image
-                          src={network.icon}
-                          alt={network.name}
-                          width={32}
-                          height={32}
-                        />
-                        {network.name}
-                      </Button>
-                    </motion.div>
-                  ))}
+                  <motion.div whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant={"default"}
+                      className='w-full h-auto p-4 flex items-center gap-3'>
+                      {OFFRAMP_NETWORK}
+                    </Button>
+                  </motion.div>
                 </div>
               </div>
 
-              {selectedChain && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}>
-                  <h3 className='font-medium mb-4'>Select Token</h3>
-                  <div className='grid grid-cols-2 gap-4'>
-                    {tokens
-                      .filter((token) => token.chains.includes(selectedChain))
-                      .map((token) => (
-                        <motion.div
-                          key={token.symbol}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}>
-                          <Button
-                            variant={
-                              selectedToken === token.symbol
-                                ? "default"
-                                : "outline"
-                            }
-                            className='w-full h-auto p-4 flex items-center gap-3'
-                            onClick={() => setSelectedToken(token.symbol)}>
-                            <Image
-                              src={token.icon}
-                              alt={token.name}
-                              width={32}
-                              height={32}
-                            />
-                            {token.symbol}
-                          </Button>
-                        </motion.div>
-                      ))}
-                  </div>
-                </motion.div>
-              )}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}>
+                <h3 className='font-medium mb-4'>Select Token</h3>
+                <div className='grid grid-cols-2 gap-4'>
+                  <motion.div whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant={"default"}
+                      className='w-full h-auto p-4 flex items-center gap-3'>
+                      {OFFRAMP_TOKEN}
+                    </Button>
+                  </motion.div>
+                </div>
+              </motion.div>
 
               <div className='flex flex-col items-center gap-4 pt-4'>
                 {!isConnected ? (
@@ -157,7 +117,7 @@ export default function NetworkPage() {
                     <Button
                       size='lg'
                       onClick={handleContinue}
-                      disabled={!selectedChain || !selectedToken}
+                      disabled={!OFFRAMP_NETWORK && !OFFRAMP_TOKEN}
                       className='w-full'>
                       Continue
                     </Button>
