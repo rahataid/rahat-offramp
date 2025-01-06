@@ -222,7 +222,7 @@ export default function SendPage() {
                   )}
                 </Button>
               )}
-              {!sendTokenTransaction.data && (
+              {!sendTransaction.data && (
                 <Button
                   onClick={handleSend}
                   // disabled={isLoading}
