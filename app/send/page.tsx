@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { OfframpLayout } from "@/components/offramp-layout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { ConnectKitButton } from "connectkit";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Copy, Loader2 } from "lucide-react";
 import {
   useExecuteOfframpRequest,
   useGetCustomerMobileMoneyWalletByPhone,
@@ -69,17 +69,32 @@ export default function SendPage() {
   const providers = useListOfframpProviders();
   const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
   const fiatWallets = useGetFiatWallets(providerUuid);
-  const waitForTransaction = useWaitForTransactionReceipt({ hash: txHash });
 
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
-
   const requestData = useGetSingleOfframpRequest({ requestId });
   const sendTokenTransaction = useWriteContract();
+
+  const waitForTransaction = useWaitForTransactionReceipt({ hash: txHash });
+
   const provider = providerId
     ? getProviderBySlug(providerId, providers.data)
     : null;
-  console.log("provider", provider);
+
+  console.log("txHash", txHash);
+
+  const isTransactionSent = !!txHash;
+  const isTransactionLoading = waitForTransaction.isLoading;
+  const isTransactionSuccess = waitForTransaction.isSuccess;
+  const isTransactionError = waitForTransaction.isError;
+
+  console.log("first", {
+    isTransactionError,
+    isTransactionLoading,
+    isTransactionSent,
+    isTransactionSuccess,
+    txHash,
+  });
 
   const handleSend = async () => {
     setError(null);
@@ -88,16 +103,18 @@ export default function SendPage() {
         setError("Token data or escrow address is missing.");
         return;
       }
-
-      await sendTokenTransaction.writeContractAsync({
+      const txResponse = await sendTokenTransaction.writeContractAsync({
         address: tokenData.address,
         abi: erc20Abi,
         functionName: "transfer",
         args: [requestData.data.escrowAddress, parseUnits(amount, decimals)],
       });
-    } catch (error) {
+      if (txResponse) {
+        setTxHash(txResponse);
+      }
+    } catch (err) {
       setError("Transaction failed. Please try again.");
-      console.error("Transaction failed:", error);
+      console.error(err);
     }
   };
 
@@ -112,7 +129,6 @@ export default function SendPage() {
       setError("Missing required data for executing the offramp request.");
       return;
     }
-
     try {
       await executeRequest.mutateAsync({
         data: {
@@ -133,52 +149,55 @@ export default function SendPage() {
         providerUuid: provider?.uuid || "",
         requestUuid: requestData.data.uuid,
       });
-    } catch (error) {
+    } catch (err) {
       setError(
-        error?.response?.data?.meta?.message ||
+        err?.response?.data?.meta?.message ||
           "Offramp request failed. Please check your data and try again."
       );
-      console.error("Offramp request failed:", error);
+      console.error(err);
     }
   };
 
-  useEffect(() => {
-    if (!phoneNumber || !customerWallet) return;
-
-    const fetchWallet = async () => {
-      setError(null);
-      try {
-        const wallet = await customerWallet.mutateAsync({
-          providerUuid,
-          payload: { phone_number: phoneNumber },
-        });
-
-        const country = getCountryByCode(wallet?.country_code);
+  const fetchWallet = useCallback(async () => {
+    if (!phoneNumber) return;
+    setError(null);
+    try {
+      const wallet = await customerWallet.mutateAsync({
+        providerUuid,
+        payload: { phone_number: phoneNumber },
+      });
+      if (wallet) {
+        const country = getCountryByCode(wallet.country_code);
         setCountryInfo(country);
         setUserWallet(wallet);
-      } catch (error) {
-        setError("Failed to fetch wallet information. Please try again.");
-        console.error("Error fetching wallet:", error);
       }
-    };
+    } catch (err) {
+      setError("Failed to fetch wallet information. Please try again.");
+      console.error(err);
+    }
+  }, [phoneNumber, providerUuid, customerWallet]);
 
+  useEffect(() => {
+    if (!phoneNumber || userWallet) return;
     fetchWallet();
-  }, [phoneNumber, providerUuid]);
+  }, [phoneNumber, userWallet, fetchWallet]);
 
   useEffect(() => {
     if (!countryInfo || !fiatWallets?.data) return;
-
     const fiatWallet = fiatWallets.data.find(
       (w) => w.currency === countryInfo.currency
     );
-
-    if (fiatWallet?.id !== walletToUse?.id) {
-      setWalletToUse(fiatWallet || null);
+    if (fiatWallet && fiatWallet.id !== walletToUse?.id) {
+      setWalletToUse(fiatWallet);
     }
   }, [countryInfo, fiatWallets?.data, walletToUse?.id]);
 
   if (!provider) {
-    return <div>Invalid provider</div>;
+    return (
+      <div className='text-center text-2xl font-semibold text-red-500'>
+        Invalid provider
+      </div>
+    );
   }
 
   return (
@@ -187,49 +206,84 @@ export default function SendPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className='grid gap-6'>
-        <div className='text-center'>
-          <h2 className='text-3xl font-light mb-2'>Send Crypto</h2>
-          <p className='text-muted-foreground'>
-            Transfer {amount} {token} to complete your {provider.name} offramp
+        className='max-w-4xl mx-auto px-4 py-8 space-y-8'>
+        <div className='text-center space-y-4'>
+          <h2 className='text-4xl font-bold'>Send Crypto</h2>
+          <p className='text-xl text-muted-foreground'>
+            Transfer{" "}
+            <span className='font-semibold'>
+              {amount} {token}
+            </span>{" "}
+            to complete your{" "}
+            <span className='font-semibold'>{provider.name}</span> offramp
           </p>
         </div>
 
         {error && (
-          <Alert>
-            <AlertDescription className='text-red-500'>
+          <Alert variant='destructive'>
+            <AlertDescription className='text-sm font-medium'>
               {error}
             </AlertDescription>
           </Alert>
         )}
 
-        <Card>
-          <CardContent className='p-6'>
-            <div className='grid gap-4'>
+        <Card className='shadow-lg'>
+          <CardContent className='p-8 space-y-8'>
+            <div className='flex justify-center'>
               <ConnectKitButton />
-              <Alert>
-                <AlertDescription>
-                  Please send exactly {amount} {token} to the following address
-                  to process your offramp request
-                </AlertDescription>
-              </Alert>
+            </div>
 
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className='p-4 bg-muted rounded-lg break-all text-center cursor-pointer'
-                onClick={() =>
-                  navigator.clipboard.writeText(
-                    requestData?.data?.escrowAddress || ""
-                  )
-                }>
+            <Alert variant='info' className='bg-blue-50 border-blue-200'>
+              <AlertDescription className='text-center font-medium'>
+                Please send exactly{" "}
+                <span className='font-bold'>
+                  {amount} {token}
+                </span>{" "}
+                to the following address to process your offramp request:
+              </AlertDescription>
+            </Alert>
+
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className='p-4 bg-gray-100 rounded-lg break-all text-center cursor-pointer relative overflow-hidden group'
+              onClick={() =>
+                navigator.clipboard.writeText(
+                  requestData?.data?.escrowAddress || ""
+                )
+              }>
+              <span className='text-sm font-medium'>
                 {requestData?.data?.escrowAddress || "No address available"}
-              </motion.div>
+              </span>
+              <span className='absolute inset-0 flex items-center justify-center bg-primary text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
+                <Copy className='w-5 h-5 mr-2' /> Click to copy
+              </span>
+            </motion.div>
 
-              <div className='space-y-2'>
-                <h3 className='font-medium'>Customer Details:</h3>
+            <div className='space-y-4'>
+              <h3 className='text-xl font-semibold'>Offramp Details</h3>
+              <div className='grid grid-cols-3 gap-4'>
+                <div className='bg-gray-100 p-4 rounded-lg text-center'>
+                  <p className='text-sm font-medium'>Provider</p>
+                  <p className='text-lg'>{provider.name}</p>
+                </div>
+                <div className='bg-gray-100 p-4 rounded-lg text-center'>
+                  <p className='text-sm font-medium'>Chain</p>
+                  <p className='text-lg'>{chain}</p>
+                </div>
+                <div className='bg-gray-100 p-4 rounded-lg text-center'>
+                  <p className='text-sm font-medium'>Amount</p>
+                  <p className='text-lg'>
+                    {amount} {token}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className='grid md:grid-cols-2 gap-8'>
+              <div className='space-y-4'>
+                <h3 className='text-xl font-semibold'>Customer Details</h3>
                 {userWallet && (
-                  // phone_number, network, account_name, country_code,
-                  <>
+                  <div className='space-y-2'>
                     <p className='text-sm'>
                       <span className='font-medium'>Phone Number:</span>{" "}
                       {userWallet.phone_number}
@@ -246,63 +300,44 @@ export default function SendPage() {
                       <span className='font-medium'>Country:</span>{" "}
                       {getCountryByCode(userWallet.country_code)?.name || ""}
                     </p>
-                  </>
+                  </div>
                 )}
               </div>
 
-              <div className='space-y-2'>
-                <h3 className='font-medium'>Wallet Details:</h3>
+              <div className='space-y-4'>
+                <h3 className='text-xl font-semibold'>Wallet Details</h3>
                 {walletToUse && (
-                  <>
-                    {/* name, type, balance,currency, status */}
+                  <div className='space-y-2'>
                     <p className='text-sm'>
                       <span className='font-medium'>Name:</span>{" "}
-                      {walletToUse?.name}
+                      {walletToUse.name}
                     </p>
                     <p className='text-sm'>
                       <span className='font-medium'>Type:</span>{" "}
-                      {walletToUse?.type}
+                      {walletToUse.type}
                     </p>
-                    {/* <p className='text-sm'>
-                      <span className='font-medium'>Balance:</span>{" "}
-                      {walletToUse?.balance}
-                    </p> */}
                     <p className='text-sm'>
                       <span className='font-medium'>Currency:</span>{" "}
-                      {walletToUse?.currency}
+                      {walletToUse.currency}
                     </p>
                     <p className='text-sm'>
                       <span className='font-medium'>Status:</span>{" "}
-                      {walletToUse?.status}
+                      {walletToUse.status}
                     </p>
-                  </>
+                  </div>
                 )}
-              </div>
-
-              <div className='space-y-2'>
-                <h3 className='font-medium'>Offramp Details:</h3>
-                {/* provider,chain,token,amount */}
-                <p className='text-sm'>
-                  <span className='font-medium'>Provider:</span> {provider.name}
-                </p>
-                <p className='text-sm'>
-                  <span className='font-medium'>Chain:</span> {chain}
-                </p>
-                <p className='text-sm'>
-                  <span className='font-medium'>Send: </span>
-                  {amount} {token}
-                </p>
               </div>
             </div>
           </CardContent>
+
           <CardFooter className='px-6 py-4'>
             <motion.div
               className='w-full'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}>
-              {!txHash ? (
+              {!isTransactionSent && (
                 <Button onClick={handleSend} size='lg' className='w-full'>
-                  {waitForTransaction.isLoading ? (
+                  {isTransactionLoading ? (
                     <>
                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                       Confirming Transaction
@@ -311,7 +346,16 @@ export default function SendPage() {
                     "Send Crypto"
                   )}
                 </Button>
-              ) : (
+              )}
+
+              {isTransactionSent && isTransactionLoading && (
+                <Button disabled size='lg' className='w-full'>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Confirming Transaction
+                </Button>
+              )}
+
+              {isTransactionSent && isTransactionSuccess && (
                 <Button
                   onClick={handleExecuteOfframpRequest}
                   size='lg'
@@ -324,6 +368,15 @@ export default function SendPage() {
                   ) : (
                     "Execute Offramp"
                   )}
+                </Button>
+              )}
+
+              {isTransactionSent && isTransactionError && (
+                <Button
+                  onClick={() => setTxHash(null)}
+                  size='lg'
+                  className='w-full'>
+                  Retry Send Crypto
                 </Button>
               )}
             </motion.div>
