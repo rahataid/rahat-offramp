@@ -1,9 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { OfframpLayout } from "@/components/offramp-layout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { ConnectKitButton } from "connectkit";
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import {
   useExecuteOfframpRequest,
   useGetCustomerMobileMoneyWalletByPhone,
@@ -13,39 +18,39 @@ import {
 } from "@/lib/offramp";
 import { getProviderBySlug } from "@/providers";
 import { getCountryByCode } from "@/utils/misc";
-import { ConnectKitButton } from "connectkit";
-import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { erc20Abi, parseUnits } from "viem";
 import {
   useAccount,
-  useChainId,
   useSendTransaction,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
 
 const TOKENS = {
-  USDC: {
-    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Example: USDC contract address
-    decimals: 6,
-  },
-  USDT: {
-    address: "0xdac17f958d2ee523a2206206994597c13d831ec7", // Example: USDT contract address
-    decimals: 6,
-  },
-  DAI: {
-    address: "0x6b175474e89094c44da98b954eedeac495271d0f", // Example: DAI contract address
-    decimals: 18,
-  },
+  USDC: { address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", decimals: 6 },
+  USDT: { address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6 },
+  DAI: { address: "0x6b175474e89094c44da98b954eedeac495271d0f", decimals: 18 },
+};
+
+type WalletInfo = {
+  account_name: string;
+  network: string;
+  phone_number: string;
+  country_code: string;
+  customer_key: string;
+};
+
+type CountryInfo = {
+  name: string;
+  currency: string;
 };
 
 export default function SendPage() {
-  const [userWallet, setUserWallet] = useState(null);
-  const [countryInfo, setCountryInfo] = useState(null);
-  const [txHash, setTxHash] = useState<`0x${string}`>();
+  const [userWallet, setUserWallet] = useState<WalletInfo | null>(null);
+  const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
+  const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [walletToUse, setWalletToUse] = useState<any>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,116 +69,113 @@ export default function SendPage() {
   const providers = useListOfframpProviders();
   const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
   const fiatWallets = useGetFiatWallets(providerUuid);
-  const account = useAccount();
-  const waitFroTransaction = useWaitForTransactionReceipt({
-    hash: txHash as `0x${string}`,
-  });
-
-  console.log("waitFroTransaction", waitFroTransaction.data);
+  const waitForTransaction = useWaitForTransactionReceipt({ hash: txHash });
 
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
 
-  const requestData = useGetSingleOfframpRequest({
-    requestId,
-  });
-
+  const requestData = useGetSingleOfframpRequest({ requestId });
   const sendTokenTransaction = useWriteContract();
   const provider = providerId
     ? getProviderBySlug(providerId, providers.data)
     : null;
-
-  console.log("userWallet", {
-    userWallet,
-    countryInfo,
-    requestData,
-  });
+  console.log("provider", provider);
 
   const handleSend = async () => {
-    // todo: here add create offramp and add
+    setError(null);
     try {
-      const d = {
-        address: tokenData?.address,
+      if (!tokenData || !requestData?.data?.escrowAddress) {
+        setError("Token data or escrow address is missing.");
+        return;
+      }
+
+      await sendTokenTransaction.writeContractAsync({
+        address: tokenData.address,
         abi: erc20Abi,
         functionName: "transfer",
-        args: [
-          requestData?.data?.escrowAddress, // Replace with the recipient address
-          // amount,
-          parseUnits(amount, decimals),
-        ],
-      };
-      console.log("d", d);
-      await sendTokenTransaction.writeContractAsync(d);
-      // sendTransaction.sendTransaction({
-      //   value: parseEther(amount),
-      //   account: address,
-      //   to: requestData?.data?.escrowAddress,
-      //   token: "USDC",
-      // });
+        args: [requestData.data.escrowAddress, parseUnits(amount, decimals)],
+      });
     } catch (error) {
+      setError("Transaction failed. Please try again.");
       console.error("Transaction failed:", error);
     }
   };
 
-  const handleExecuteOfframRequest = async () => {
-    if (!fiatWallets?.data?.length) {
-      console.error("No fiat wallets found");
+  const handleExecuteOfframpRequest = async () => {
+    setError(null);
+    if (
+      !fiatWallets?.data?.length ||
+      !userWallet ||
+      !countryInfo ||
+      !requestData?.data
+    ) {
+      setError("Missing required data for executing the offramp request.");
       return;
     }
-    const walletToUse = fiatWallets?.data?.[1]?.id;
+
     try {
-      executeRequest.mutate({
+      await executeRequest.mutateAsync({
         data: {
           mobileMoneyReceiver: {
-            accountName: userWallet?.account_name,
-            networkProvider: userWallet?.network,
-            phoneNumber: userWallet?.phone_number,
+            accountName: userWallet.account_name,
+            networkProvider: userWallet.network,
+            phoneNumber: userWallet.phone_number,
           },
-          senderAddress: account.address,
+          senderAddress: address,
           token,
-
           chain,
           cryptoAmount: amount,
-          currency: countryInfo?.currency,
-          wallet_id: walletToUse,
-          requestUuid: requestData?.data?.uuid,
-          customer_key: userWallet?.customer_key,
+          currency: countryInfo.currency,
+          wallet_id: walletToUse?.id,
+          requestUuid: requestData.data.uuid,
+          customer_key: userWallet.customer_key,
         },
-        providerUuid: provider.uuid,
-        requestUuid: requestData?.data?.uuid,
+        providerUuid: provider?.uuid || "",
+        requestUuid: requestData.data.uuid,
       });
     } catch (error) {
+      setError(
+        error?.response?.data?.meta?.message ||
+          "Offramp request failed. Please check your data and try again."
+      );
       console.error("Offramp request failed:", error);
     }
   };
 
   useEffect(() => {
-    if (!phoneNumber) return;
-    const fetchWallet = async () => {
-      const wallet = await customerWallet.mutateAsync({
-        providerUuid: providerUuid,
-        payload: {
-          phone_number: phoneNumber,
-        },
-      });
-      const country = getCountryByCode(wallet?.country_code);
-      setCountryInfo(country);
+    if (!phoneNumber || !customerWallet) return;
 
-      setUserWallet(wallet);
+    const fetchWallet = async () => {
+      setError(null);
+      try {
+        const wallet = await customerWallet.mutateAsync({
+          providerUuid,
+          payload: { phone_number: phoneNumber },
+        });
+
+        const country = getCountryByCode(wallet?.country_code);
+        setCountryInfo(country);
+        setUserWallet(wallet);
+      } catch (error) {
+        setError("Failed to fetch wallet information. Please try again.");
+        console.error("Error fetching wallet:", error);
+      }
     };
+
     fetchWallet();
   }, [phoneNumber, providerUuid]);
 
   useEffect(() => {
-    if (!sendTokenTransaction.data) return;
-    setTxHash(sendTokenTransaction.data);
-  }, [sendTokenTransaction.data, sendTransaction.data]);
+    if (!countryInfo || !fiatWallets?.data) return;
 
-  console.log("exectureRequest.isSuccess", executeRequest);
+    const fiatWallet = fiatWallets.data.find(
+      (w) => w.currency === countryInfo.currency
+    );
 
-  // if (executeRequest.isSuccess) {
-  //   router.push(`/status?referenceId=${123}&providerUuid=${providerUuid}`);
-  // }
+    if (fiatWallet?.id !== walletToUse?.id) {
+      setWalletToUse(fiatWallet || null);
+    }
+  }, [countryInfo, fiatWallets?.data, walletToUse?.id]);
 
   if (!provider) {
     return <div>Invalid provider</div>;
@@ -193,6 +195,14 @@ export default function SendPage() {
           </p>
         </div>
 
+        {error && (
+          <Alert>
+            <AlertDescription className='text-red-500'>
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardContent className='p-6'>
             <div className='grid gap-4'>
@@ -207,17 +217,81 @@ export default function SendPage() {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 className='p-4 bg-muted rounded-lg break-all text-center cursor-pointer'
-                onClick={() => navigator.clipboard.writeText("0x...")}>
-                {requestData?.data?.escrowAddress}
+                onClick={() =>
+                  navigator.clipboard.writeText(
+                    requestData?.data?.escrowAddress || ""
+                  )
+                }>
+                {requestData?.data?.escrowAddress || "No address available"}
               </motion.div>
 
               <div className='space-y-2'>
+                <h3 className='font-medium'>Customer Details:</h3>
+                {userWallet && (
+                  // phone_number, network, account_name, country_code,
+                  <>
+                    <p className='text-sm'>
+                      <span className='font-medium'>Phone Number:</span>{" "}
+                      {userWallet.phone_number}
+                    </p>
+                    <p className='text-sm'>
+                      <span className='font-medium'>Network:</span>{" "}
+                      {userWallet.network}
+                    </p>
+                    <p className='text-sm'>
+                      <span className='font-medium'>Account Name:</span>{" "}
+                      {userWallet.account_name}
+                    </p>
+                    <p className='text-sm'>
+                      <span className='font-medium'>Country:</span>{" "}
+                      {getCountryByCode(userWallet.country_code)?.name || ""}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <h3 className='font-medium'>Wallet Details:</h3>
+                {walletToUse && (
+                  <>
+                    {/* name, type, balance,currency, status */}
+                    <p className='text-sm'>
+                      <span className='font-medium'>Name:</span>{" "}
+                      {walletToUse?.name}
+                    </p>
+                    <p className='text-sm'>
+                      <span className='font-medium'>Type:</span>{" "}
+                      {walletToUse?.type}
+                    </p>
+                    {/* <p className='text-sm'>
+                      <span className='font-medium'>Balance:</span>{" "}
+                      {walletToUse?.balance}
+                    </p> */}
+                    <p className='text-sm'>
+                      <span className='font-medium'>Currency:</span>{" "}
+                      {walletToUse?.currency}
+                    </p>
+                    <p className='text-sm'>
+                      <span className='font-medium'>Status:</span>{" "}
+                      {walletToUse?.status}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div className='space-y-2'>
                 <h3 className='font-medium'>Offramp Details:</h3>
-                {Array.from(searchParams.entries()).map(([key, value]) => (
-                  <p key={key} className='text-sm'>
-                    <span className='font-medium'>{key}:</span> {value}
-                  </p>
-                ))}
+                {/* provider,chain,token,amount */}
+                <p className='text-sm'>
+                  <span className='font-medium'>Provider:</span> {provider.name}
+                </p>
+                <p className='text-sm'>
+                  <span className='font-medium'>Chain:</span> {chain}
+                </p>
+                <p className='text-sm'>
+                  <span className='font-medium'>Send: </span>
+                  {amount} {token}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -226,12 +300,20 @@ export default function SendPage() {
               className='w-full'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}>
-              {waitFroTransaction.data && (
+              {!txHash ? (
+                <Button onClick={handleSend} size='lg' className='w-full'>
+                  {waitForTransaction.isLoading ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Confirming Transaction
+                    </>
+                  ) : (
+                    "Send Crypto"
+                  )}
+                </Button>
+              ) : (
                 <Button
-                  onClick={handleExecuteOfframRequest}
-                  // onClick={() =>
-                  //   router.push(`/status?txHash=${sendTransaction.data?.hash}`)
-                  // }
+                  onClick={handleExecuteOfframpRequest}
                   size='lg'
                   className='w-full'>
                   {executeRequest.isPending ? (
@@ -241,22 +323,6 @@ export default function SendPage() {
                     </>
                   ) : (
                     "Execute Offramp"
-                  )}
-                </Button>
-              )}
-              {!sendTransaction.data && (
-                <Button
-                  onClick={handleSend}
-                  // disabled={isLoading}
-                  size='lg'
-                  className='w-full'>
-                  {waitFroTransaction.isLoading || sendTransaction.isPending ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Confirming Transaction
-                    </>
-                  ) : (
-                    "Send Crypto"
                   )}
                 </Button>
               )}

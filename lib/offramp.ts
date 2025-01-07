@@ -1,6 +1,6 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
 import api, { endpoints } from "@/lib/api";
-import providers, { joinLocalAndApiProviders } from "@/providers";
+import { joinLocalAndApiProviders } from "@/providers";
+import { useMutation, useQuery } from "@tanstack/react-query";
 // import type {
 //   ServiceProvider,
 //   OfframpRequest,
@@ -147,8 +147,7 @@ export const useGetFiatWallets = (providerUuid: string) => {
         uuid: providerUuid,
         action: "get-fiat-wallet",
       });
-      console.log("res", res);
-      return res?.data || {};
+      return res?.data || [];
     },
   });
 };
