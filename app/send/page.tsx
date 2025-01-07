@@ -12,6 +12,7 @@ import {
   useListOfframpProviders,
 } from "@/lib/offramp";
 import { getProviderBySlug } from "@/providers";
+import { getCountryByCode } from "@/utils/misc";
 import { ConnectKitButton } from "connectkit";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -43,6 +44,7 @@ const TOKENS = {
 
 export default function SendPage() {
   const [userWallet, setUserWallet] = useState(null);
+  const [countryInfo, setCountryInfo] = useState(null);
   const [txHash, setTxHash] = useState<`0x${string}`>();
 
   const router = useRouter();
@@ -62,7 +64,7 @@ export default function SendPage() {
   const providers = useListOfframpProviders();
   const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
   const fiatWallets = useGetFiatWallets(providerUuid);
-  const chainId = useChainId();
+  const account = useAccount();
   const waitFroTransaction = useWaitForTransactionReceipt({
     hash: txHash as `0x${string}`,
   });
@@ -80,6 +82,12 @@ export default function SendPage() {
   const provider = providerId
     ? getProviderBySlug(providerId, providers.data)
     : null;
+
+  console.log("userWallet", {
+    userWallet,
+    countryInfo,
+    requestData,
+  });
 
   const handleSend = async () => {
     // todo: here add create offramp and add
@@ -112,17 +120,26 @@ export default function SendPage() {
       console.error("No fiat wallets found");
       return;
     }
-    const walletToUse = fiatWallets?.data?.[0]?.id;
+    const walletToUse = fiatWallets?.data?.[1]?.id;
     try {
       executeRequest.mutate({
-        chain,
-        token,
+        data: {
+          mobileMoneyReceiver: {
+            accountName: userWallet?.account_name,
+            networkProvider: userWallet?.network,
+            phoneNumber: userWallet?.phone_number,
+          },
+          senderAddress: account.address,
+          token,
+
+          chain,
+          cryptoAmount: amount,
+          currency: countryInfo?.currency,
+          wallet_id: walletToUse,
+          requestUuid: requestData?.data?.uuid,
+          customer_key: userWallet?.customer_key,
+        },
         providerUuid: provider.uuid,
-        transaction_hash: waitFroTransaction.data
-          ?.transactionHash as `0x${string}`,
-        customer_key: userWallet?.customer_key,
-        request_id: requestId,
-        wallet_id: walletToUse,
         requestUuid: requestData?.data?.uuid,
       });
     } catch (error) {
@@ -139,6 +156,9 @@ export default function SendPage() {
           phone_number: phoneNumber,
         },
       });
+      const country = getCountryByCode(wallet?.country_code);
+      setCountryInfo(country);
+
       setUserWallet(wallet);
     };
     fetchWallet();
@@ -149,9 +169,11 @@ export default function SendPage() {
     setTxHash(sendTokenTransaction.data);
   }, [sendTokenTransaction.data, sendTransaction.data]);
 
-  if (executeRequest.isSuccess) {
-    router.push(`/status?referenceId=${123}&providerUuid=${providerUuid}`);
-  }
+  console.log("exectureRequest.isSuccess", executeRequest);
+
+  // if (executeRequest.isSuccess) {
+  //   router.push(`/status?referenceId=${123}&providerUuid=${providerUuid}`);
+  // }
 
   if (!provider) {
     return <div>Invalid provider</div>;

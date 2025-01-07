@@ -10,7 +10,6 @@ import { getProviderBySlug } from "@/providers";
 import { ProviderFormData } from "@/types/provider";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { parseEther, parseUnits } from "viem";
 import { useAccount } from "wagmi";
 
 export default function DetailsPage() {
@@ -51,12 +50,14 @@ export default function DetailsPage() {
           senderAddress: account.address,
         })
         .then((res) => {
-          Object.entries({ ...data, requestId: res?.data?.requestId }).forEach(
+          console.log("res", res);
+          Object.entries({ ...data, requestId: res?.requestId }).forEach(
             ([key, value]) => {
               params.append(key, value);
             }
           );
           params.append("phone_number", data.phoneNumber);
+
           router.push(`/send?${params.toString()}`);
         });
     } catch (error) {

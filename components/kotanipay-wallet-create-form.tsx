@@ -26,6 +26,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { supportedCountries } from "@/config/constants";
 
 const formSchema = z.object({
   phone_number: z.string().min(1, "Phone number is required"),
@@ -33,6 +34,7 @@ const formSchema = z.object({
   network: z.enum(["MPESA", "MTN", "AIRTEL", "VODAFONE"]),
   account_name: z.string().min(1, "Account name is required"),
   phone_code: z.string().min(1, "Phone code is required"),
+  currency: z.string().min(1, "Currency is required"),
 });
 
 type AccountCreationModalProps = {
@@ -55,6 +57,7 @@ export function KotanipayWalletCreationModal({
       network: "MPESA",
       account_name: "",
       phone_code: "",
+      currency: "",
     },
   });
 
@@ -70,9 +73,14 @@ export function KotanipayWalletCreationModal({
     }
   };
 
-  const handleCountryChange = (country: string, phoneCode: string) => {
+  const handleCountryChange = (
+    country: string,
+    phoneCode: string,
+    currency: string
+  ) => {
     form.setValue("country_code", country);
     form.setValue("phone_code", phoneCode);
+    form.setValue("currency", currency);
   };
 
   return (
@@ -93,13 +101,14 @@ export function KotanipayWalletCreationModal({
                   <FormLabel>Country</FormLabel>
                   <Select
                     onValueChange={(value) => {
-                      const countryData = {
-                        KE: "+254",
-                        UG: "+256",
-                        NG: "+234",
-                        TZ: "+255",
-                      };
-                      handleCountryChange(value, countryData[value]);
+                      const countryData = supportedCountries.find(
+                        (country) => country.code === value
+                      );
+                      handleCountryChange(
+                        value,
+                        countryData?.dial_code as string,
+                        countryData?.currency as string
+                      );
                     }}
                     defaultValue={field.value}>
                     <FormControl>
@@ -108,10 +117,11 @@ export function KotanipayWalletCreationModal({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value='KE'>Kenya (+254)</SelectItem>
-                      <SelectItem value='UG'>Uganda (+256)</SelectItem>
-                      <SelectItem value='NG'>Nigeria (+234)</SelectItem>
-                      <SelectItem value='TZ'>Tanzania (+255)</SelectItem>
+                      {supportedCountries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -8,6 +8,22 @@ import providers, { joinLocalAndApiProviders } from "@/providers";
 //   SingleOfframpRequest,
 // } from "@/types/offramp";
 
+export type OfframpData = {
+  mobileMoneyReceiver: {
+    networkProvider: string;
+    phoneNumber: string;
+    accountName: string;
+  };
+  currency: string;
+  chain: string;
+  token: string;
+  cryptoAmount: number;
+  senderAddress: string;
+  wallet_id: string;
+  request_id: string;
+  customer_key: string;
+};
+
 export const useListOfframpProviders = () => {
   return useQuery({
     queryKey: ["offrampProviders"],
@@ -41,35 +57,14 @@ export const useExecuteOfframpRequest = () => {
     {
       providerUuid: string;
       requestUuid: string;
-      chain: string;
-      token: string;
-      transaction_hash: string;
-      wallet_id: string;
-      request_id: string;
-      customer_key: string;
+      data: OfframpData;
     }
   >({
-    mutationFn: async ({
-      providerUuid,
-      requestUuid,
-      chain,
-      token,
-      transaction_hash,
-      wallet_id,
-      request_id,
-      customer_key,
-    }) => {
+    mutationFn: async ({ providerUuid, requestUuid, data }) => {
       const res = await api.post(endpoints.offramps.execute, {
         providerUuid,
         requestUuid,
-        data: {
-          chain,
-          token,
-          transaction_hash,
-          wallet_id,
-          request_id,
-          customer_key,
-        },
+        data,
       });
       return res.data;
     },
@@ -96,7 +91,7 @@ export const useGetSingleOfframpRequest = (payload: {
       const res = await api.get(endpoints.offramps.single, {
         params: payload,
       });
-      return res.data?.data;
+      return res.data;
     },
   });
 };
@@ -166,7 +161,7 @@ export const useCheckOfframpStatus = () => {
     mutationFn: async (data: {
       providerUuid: string;
       payload: {
-        request_id: string;
+        referenceId: string;
       };
     }) => {
       const res = await providerAction.mutateAsync({
@@ -174,7 +169,7 @@ export const useCheckOfframpStatus = () => {
         action: "check-offramp-status",
         payload: data.payload,
       });
-      return res?.data || {};
+      return res?.data.data || {};
     },
   });
 };

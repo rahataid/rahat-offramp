@@ -71,7 +71,6 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
 
   const countryCode = form.watch("countryCode");
   const phoneNumber = form.watch("phoneNumber");
-  const [debouncedCountryCode] = useDebounce(countryCode, 500);
   const [debouncedPhoneNumber] = useDebounce(phoneNumber, 100);
 
   console.log("first", form.formState.errors);
@@ -94,9 +93,10 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
 
   const handleCreateAccount = async (data: z.infer<typeof formSchema>) => {
     try {
-      const newAccount = await createAccount(data);
-      setWalletInfo(newAccount);
-      setIsModalOpen(false);
+      await createAccount(data).then((res) => {
+        setWalletInfo(res);
+        setIsModalOpen(false);
+      });
     } catch (error) {
       console.error("Error creating account:", error);
     }
