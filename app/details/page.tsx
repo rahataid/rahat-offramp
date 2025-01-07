@@ -1,16 +1,18 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAccount } from "wagmi";
+import { motion } from "framer-motion";
 import { OfframpLayout } from "@/components/offramp-layout";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   useCreateOfframpRequest,
   useListOfframpProviders,
 } from "@/lib/offramp";
 import { getProviderBySlug } from "@/providers";
 import { ProviderFormData } from "@/types/provider";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { useAccount } from "wagmi";
 
 export default function DetailsPage() {
   const router = useRouter();
@@ -24,44 +26,48 @@ export default function DetailsPage() {
   const account = useAccount();
 
   const [formData, setFormData] = useState<ProviderFormData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const provider = providerId
     ? getProviderBySlug(providerId, providers.data)
     : null;
-  console.log("provider", provider);
 
   if (!provider) {
-    return <div>Invalid provider</div>;
+    return (
+      <div className='flex items-center justify-center h-screen'>
+        <Alert variant='destructive'>
+          <AlertDescription>
+            Invalid provider. Please check the URL and try again.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
-
-  console.log();
 
   const handleSubmit = async (data: ProviderFormData) => {
     setFormData(data);
+    setError(null);
     const params = new URLSearchParams(searchParams);
-    console.log("data", data);
     try {
-      await createOfframpRequest
-        .mutateAsync({
-          providerUuid,
-          chain,
-          token,
-          amount: data.amount,
-          senderAddress: account.address,
-        })
-        .then((res) => {
-          console.log("res", res);
-          Object.entries({ ...data, requestId: res?.requestId }).forEach(
-            ([key, value]) => {
-              params.append(key, value);
-            }
-          );
-          params.append("phone_number", data.phoneNumber);
+      const res = await createOfframpRequest.mutateAsync({
+        providerUuid,
+        chain,
+        token,
+        amount: data.amount,
+        senderAddress: account.address,
+      });
 
-          router.push(`/send?${params.toString()}`);
-        });
+      Object.entries({ ...data, requestId: res?.requestId }).forEach(
+        ([key, value]) => {
+          params.append(key, value);
+        }
+      );
+      params.append("phone_number", data.phoneNumber);
+
+      router.push(`/send?${params.toString()}`);
     } catch (error) {
-      console.log("error", error);
+      console.error("Error creating offramp request:", error);
+      setError("Failed to create offramp request. Please try again.");
     }
   };
 
@@ -69,20 +75,36 @@ export default function DetailsPage() {
 
   return (
     <OfframpLayout>
-      <div className='grid gap-6'>
-        <div className='text-center'>
-          <h2 className='text-2xl font-light mb-2'>Fill Offramp Details</h2>
-          <p className='text-muted-foreground'>
-            Enter your details for {provider.name}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className='max-w-2xl mx-auto px-4 py-8 space-y-8'>
+        <div className='text-center space-y-4'>
+          <h2 className='text-4xl font-bold'>Fill Offramp Details</h2>
+          <p className='text-xl text-muted-foreground'>
+            Enter your details for{" "}
+            <span className='font-semibold'>{provider.name}</span>
           </p>
         </div>
 
-        <Card>
-          <CardContent className='p-6'>
-            <FormComponent onSubmit={handleSubmit} />
+        {error && (
+          <Alert variant='destructive'>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <Card className='shadow-lg'>
+          <CardContent className='p-8'>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}>
+              <FormComponent onSubmit={handleSubmit} />
+            </motion.div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
     </OfframpLayout>
   );
 }

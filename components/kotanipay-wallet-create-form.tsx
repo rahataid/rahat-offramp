@@ -27,6 +27,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { supportedCountries } from "@/config/constants";
+import { motion } from "framer-motion";
+import { Loader2, CreditCard } from "lucide-react";
 
 const formSchema = z.object({
   phone_number: z.string().min(1, "Phone number is required"),
@@ -85,14 +87,17 @@ export function KotanipayWalletCreationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
-          <DialogTitle>Create Account</DialogTitle>
+          <DialogTitle className='text-2xl font-bold flex items-center gap-2'>
+            <CreditCard className='w-6 h-6' />
+            Create Kotanipay Wallet
+          </DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className='space-y-4'>
+            className='space-y-6'>
             <FormField
               control={form.control}
               name='country_code'
@@ -112,7 +117,7 @@ export function KotanipayWalletCreationModal({
                     }}
                     defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className='w-full'>
                         <SelectValue placeholder='Select country' />
                       </SelectTrigger>
                     </FormControl>
@@ -151,6 +156,7 @@ export function KotanipayWalletCreationModal({
                           )
                         )
                       }
+                      className='w-full'
                     />
                   </FormControl>
                   <FormMessage />
@@ -167,7 +173,7 @@ export function KotanipayWalletCreationModal({
                     onValueChange={field.onChange}
                     defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className='w-full'>
                         <SelectValue placeholder='Select network' />
                       </SelectTrigger>
                     </FormControl>
@@ -189,7 +195,11 @@ export function KotanipayWalletCreationModal({
                 <FormItem>
                   <FormLabel>Account Name</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder='Enter account name' />
+                    <Input
+                      {...field}
+                      placeholder='Enter account name'
+                      className='w-full'
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -198,12 +208,25 @@ export function KotanipayWalletCreationModal({
           </form>
         </Form>
         <DialogFooter>
-          <Button
-            type='submit'
-            onClick={form.handleSubmit(handleSubmit)}
-            disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Account"}
-          </Button>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className='w-full'>
+            <Button
+              type='submit'
+              onClick={form.handleSubmit(handleSubmit)}
+              disabled={isLoading}
+              className='w-full py-6 text-lg font-semibold'>
+              {isLoading ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Creating...
+                </>
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+          </motion.div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

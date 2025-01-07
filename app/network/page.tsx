@@ -1,51 +1,14 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { OfframpLayout } from "@/components/offramp-layout";
-import { ConnectKitButton } from "connectkit";
-import { useAccount } from "wagmi";
-import { useSearchParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
 import { OFFRAMP_NETWORK, OFFRAMP_TOKEN } from "@/config/constants";
-
-const networks = [
-  {
-    id: 1,
-    name: "Base Sepolia",
-    symbol: "BASE",
-    icon: "/placeholder.svg?height=32&width=32",
-  },
-  {
-    id: 137,
-    name: "CELO",
-    symbol: "CELO",
-    icon: "/placeholder.svg?height=32&width=32",
-  },
-];
-
-const tokens = [
-  {
-    symbol: "USDC",
-    name: "USD Coin",
-    icon: "/placeholder.svg?height=32&width=32",
-    chains: ["BASE"],
-  },
-  {
-    symbol: "USDT",
-    name: "Tether",
-    icon: "/placeholder.svg?height=32&width=32",
-    chains: [1, 137],
-  },
-  {
-    symbol: "CUSD",
-    name: "cUSD",
-    icon: "/placeholder.svg?height=32&width=32",
-    chains: ["CELO"],
-  },
-];
+import { ConnectKitButton } from "connectkit";
+import { motion } from "framer-motion";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAccount } from "wagmi";
+import { ArrowRight } from "lucide-react";
 
 export default function NetworkPage() {
   const { isConnected } = useAccount();
@@ -66,64 +29,68 @@ export default function NetworkPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className='grid gap-8'>
-        <div className='text-center'>
-          <h2 className='text-3xl font-light mb-2'>Select Network & Token</h2>
-          <p className='text-muted-foreground'>
-            Choose the network and token you want to offramp
+        className='max-w-2xl mx-auto px-4 py-8 space-y-8'>
+        <div className='text-center space-y-4'>
+          <h2 className='text-4xl font-bold'>Network & Token</h2>
+          <p className='text-xl text-muted-foreground'>
+            Review your offramp network and token
           </p>
         </div>
 
-        <Card>
-          <CardContent className='p-6'>
-            <div className='grid gap-6'>
+        <Card className='shadow-lg'>
+          <CardContent className='p-8 space-y-8'>
+            <div className='space-y-6'>
               <div>
-                <h3 className='font-medium mb-4'>Select Network</h3>
-                <div className='grid grid-cols-2 gap-4'>
-                  <motion.div whileTap={{ scale: 0.95 }}>
-                    <Button
-                      variant={"default"}
-                      className='w-full h-auto p-4 flex items-center gap-3'>
-                      {OFFRAMP_NETWORK}
-                    </Button>
-                  </motion.div>
+                <h3 className='text-2xl font-semibold mb-4'>Network</h3>
+                <div className='bg-muted rounded-lg p-4'>
+                  <p className='text-lg font-medium'>{OFFRAMP_NETWORK}</p>
+                  <p className='text-sm text-muted-foreground'>
+                    Selected Network
+                  </p>
                 </div>
               </div>
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}>
-                <h3 className='font-medium mb-4'>Select Token</h3>
-                <div className='grid grid-cols-2 gap-4'>
-                  <motion.div whileTap={{ scale: 0.95 }}>
-                    <Button
-                      variant={"default"}
-                      className='w-full h-auto p-4 flex items-center gap-3'>
-                      {OFFRAMP_TOKEN}
-                    </Button>
-                  </motion.div>
+                transition={{ duration: 0.5, delay: 0.2 }}>
+                <h3 className='text-2xl font-semibold mb-4'>Token</h3>
+                <div className='bg-muted rounded-lg p-4'>
+                  <p className='text-lg font-medium'>{OFFRAMP_TOKEN}</p>
+                  <p className='text-sm text-muted-foreground'>
+                    Selected Token
+                  </p>
                 </div>
               </motion.div>
+            </div>
 
-              <div className='flex flex-col items-center gap-4 pt-4'>
-                {!isConnected ? (
-                  <ConnectKitButton />
-                ) : (
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className='w-full'>
-                    <Button
-                      size='lg'
-                      onClick={handleContinue}
-                      disabled={!OFFRAMP_NETWORK && !OFFRAMP_TOKEN}
-                      className='w-full'>
-                      Continue
-                    </Button>
-                  </motion.div>
-                )}
-              </div>
+            <div className='flex flex-col items-center gap-4 pt-4'>
+              {!isConnected ? (
+                <div className='w-full'>
+                  <ConnectKitButton.Custom>
+                    {({ show }) => (
+                      <Button
+                        size='lg'
+                        onClick={show}
+                        className='w-full py-6 text-lg font-semibold'>
+                        Connect Wallet
+                      </Button>
+                    )}
+                  </ConnectKitButton.Custom>
+                </div>
+              ) : (
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className='w-full'>
+                  <Button
+                    size='lg'
+                    onClick={handleContinue}
+                    className='w-full py-6 text-lg font-semibold'>
+                    Continue <ArrowRight className='ml-2 h-5 w-5' />
+                  </Button>
+                </motion.div>
+              )}
             </div>
           </CardContent>
         </Card>
