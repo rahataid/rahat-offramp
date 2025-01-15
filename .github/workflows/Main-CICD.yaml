@@ -38,7 +38,7 @@ jobs:
         id: build-push-client
         uses: docker/build-push-action@v5
         with:
-          context: client
+          context: .
           platforms: linux/amd64
           file: client/Dockerfile
           push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
