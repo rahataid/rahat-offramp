@@ -40,6 +40,6 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
-          file: Dockerfile
+          file: Dockerfile.standalone
           push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
           tags: esatya/rahat-offramp:dev

@@ -1,16 +1,16 @@
-name: Main CI/CD
+name: Stage CI/CD
 on:
   push:
     branches:
-      - main
+      - stage
   pull_request:
     branches:
-      - main
+      - stage
   workflow_dispatch:  
 
 env:
   CI: false
-  env_main: ${{secrets.ENV_MAIN}}
+  env_stage: ${{secrets.ENV_STAGE}}
 
 jobs:
   docker_build:
@@ -22,7 +22,7 @@ jobs:
 
       - name: create environment file
         run: |
-          touch ./.env && echo "$env_main" >> ./.env
+          touch ./.env && echo "$env_stage" >> ./.env
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -42,4 +42,4 @@ jobs:
           platforms: linux/amd64
           file: Dockerfile.standalone
           push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-          tags: esatya/rahat-offramp:main
+          tags: esatya/rahat-offramp:stage
