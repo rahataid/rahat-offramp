@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { OfframpLayout } from "@/components/offramp-layout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,17 +21,22 @@ import { getCountryByCode } from "@/utils/misc";
 import { erc20Abi, parseUnits } from "viem";
 import {
   useAccount,
-  useSendTransaction,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
 
+//
+// 1) Hardcoded token info
+//
 const TOKENS = {
   USDC: { address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", decimals: 6 },
   USDT: { address: "0xdac17f958d2ee523a2206206994597c13d831ec7", decimals: 6 },
   DAI: { address: "0x6b175474e89094c44da98b954eedeac495271d0f", decimals: 18 },
 };
 
+//
+// 2) Types
+//
 type WalletInfo = {
   account_name: string;
   network: string;
@@ -46,16 +51,23 @@ type CountryInfo = {
 };
 
 export default function SendPage() {
+  //
+  // 3) Local states
+  //
   const [userWallet, setUserWallet] = useState<WalletInfo | null>(null);
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
-  const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [walletToUse, setWalletToUse] = useState<any>(null);
 
-  const router = useRouter();
+  const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  //
+  // 4) Hooks
+  //
   const searchParams = useSearchParams();
   const { address } = useAccount();
 
+  // Query params
   const requestId = searchParams.get("requestId");
   const providerId = searchParams.get("provider");
   const providerUuid = searchParams.get("providerUuid");
@@ -64,45 +76,91 @@ export default function SendPage() {
   const chain = searchParams.get("chain");
   const phoneNumber = searchParams.get("phoneNumber");
 
-  const executeRequest = useExecuteOfframpRequest();
-  const sendTransaction = useSendTransaction({});
+  // Queries
   const providers = useListOfframpProviders();
   const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
   const fiatWallets = useGetFiatWallets(providerUuid);
+  const executeRequest = useExecuteOfframpRequest();
 
+  const sendTokenTransaction = useWriteContract();
+  const waitForTransaction = useWaitForTransactionReceipt({ hash: txHash });
+
+  // Token & request data
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
   const requestData = useGetSingleOfframpRequest({ requestId });
-  const sendTokenTransaction = useWriteContract();
 
-  const waitForTransaction = useWaitForTransactionReceipt({ hash: txHash });
-
-  const provider = providerId
-    ? getProviderBySlug(providerId, providers.data)
-    : null;
-
-  console.log("txHash", txHash);
-
+  // Transaction states
   const isTransactionSent = !!txHash;
   const isTransactionLoading = waitForTransaction.isLoading;
   const isTransactionSuccess = waitForTransaction.isSuccess;
   const isTransactionError = waitForTransaction.isError;
 
-  console.log("first", {
-    isTransactionError,
-    isTransactionLoading,
-    isTransactionSent,
-    isTransactionSuccess,
-    txHash,
-  });
+  // Resolved provider
+  const provider = providerId
+    ? getProviderBySlug(providerId, providers.data)
+    : null;
 
+  //
+  // 5) Only fetch user wallet data once, based on phoneNumber
+  //
+  const fetchWallet = useCallback(async () => {
+    if (!phoneNumber) return; // no phone => skip
+    setError(null);
+
+    try {
+      const wallet = await customerWallet.mutateAsync({
+        providerUuid,
+        payload: { phone_number: phoneNumber },
+      });
+      if (wallet) {
+        const ctry = getCountryByCode(wallet.country_code);
+        setUserWallet(wallet);
+        setCountryInfo(ctry || null);
+      }
+    } catch (err) {
+      console.error("Error fetching wallet:", err);
+      setError("Failed to fetch wallet information. Please try again.");
+    }
+  }, [phoneNumber, providerUuid, customerWallet]);
+
+  //
+  // 6) Effect: fetch user wallet only if phoneNumber exists and no userWallet yet
+  //    -> This only runs once because once userWallet is set, it won't re-run.
+  //
+  useEffect(() => {
+    if (phoneNumber && !userWallet) {
+      fetchWallet();
+    }
+  }, [phoneNumber, userWallet, fetchWallet]);
+
+  //
+  // 7) Once we have countryInfo & fiatWallets.data, set walletToUse if different
+  //    -> We do NOT include walletToUse in dependencies. We only want to run this
+  //       whenever countryInfo or fiatWallets.data changes.
+  //
+  useEffect(() => {
+    if (!countryInfo || !fiatWallets.data) return;
+
+    const foundFiatWallet = fiatWallets.data.find(
+      (w) => w.currency === countryInfo.currency
+    );
+    // Only update if it's different
+    if (foundFiatWallet && foundFiatWallet.id !== walletToUse?.id) {
+      setWalletToUse(foundFiatWallet);
+    }
+  }, [countryInfo, fiatWallets.data]); // removed walletToUse?.id
+
+  //
+  // 8) Handlers
+  //
   const handleSend = async () => {
     setError(null);
+    if (!tokenData || !requestData?.data?.escrowAddress) {
+      setError("Token data or escrow address is missing.");
+      return;
+    }
     try {
-      if (!tokenData || !requestData?.data?.escrowAddress) {
-        setError("Token data or escrow address is missing.");
-        return;
-      }
       const txResponse = await sendTokenTransaction.writeContractAsync({
         address: tokenData.address,
         abi: erc20Abi,
@@ -113,8 +171,8 @@ export default function SendPage() {
         setTxHash(txResponse);
       }
     } catch (err) {
+      console.error("Transaction error:", err);
       setError("Transaction failed. Please try again.");
-      console.error(err);
     }
   };
 
@@ -124,7 +182,8 @@ export default function SendPage() {
       !fiatWallets?.data?.length ||
       !userWallet ||
       !countryInfo ||
-      !requestData?.data
+      !requestData?.data ||
+      !walletToUse
     ) {
       setError("Missing required data for executing the offramp request.");
       return;
@@ -142,56 +201,25 @@ export default function SendPage() {
           chain,
           cryptoAmount: amount,
           currency: countryInfo.currency,
-          wallet_id: walletToUse?.id,
+          wallet_id: walletToUse.id,
           requestUuid: requestData.data.uuid,
           customer_key: userWallet.customer_key,
         },
         providerUuid: provider?.uuid || "",
         requestUuid: requestData.data.uuid,
       });
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Offramp request error:", err);
       setError(
         err?.response?.data?.meta?.message ||
           "Offramp request failed. Please check your data and try again."
       );
-      console.error(err);
     }
   };
 
-  const fetchWallet = useCallback(async () => {
-    if (!phoneNumber) return;
-    setError(null);
-    try {
-      const wallet = await customerWallet.mutateAsync({
-        providerUuid,
-        payload: { phone_number: phoneNumber },
-      });
-      if (wallet) {
-        const country = getCountryByCode(wallet.country_code);
-        setCountryInfo(country);
-        setUserWallet(wallet);
-      }
-    } catch (err) {
-      setError("Failed to fetch wallet information. Please try again.");
-      console.error(err);
-    }
-  }, [phoneNumber, providerUuid, customerWallet]);
-
-  useEffect(() => {
-    if (!phoneNumber || userWallet) return;
-    fetchWallet();
-  }, [phoneNumber, userWallet, fetchWallet]);
-
-  useEffect(() => {
-    if (!countryInfo || !fiatWallets?.data) return;
-    const fiatWallet = fiatWallets.data.find(
-      (w) => w.currency === countryInfo.currency
-    );
-    if (fiatWallet && fiatWallet.id !== walletToUse?.id) {
-      setWalletToUse(fiatWallet);
-    }
-  }, [countryInfo, fiatWallets?.data, walletToUse?.id]);
-
+  //
+  // 9) If provider is invalid, bail out
+  //
   if (!provider) {
     return (
       <div className='text-center text-2xl font-semibold text-red-500'>
@@ -200,6 +228,9 @@ export default function SendPage() {
     );
   }
 
+  //
+  // 10) Rendering
+  //
   return (
     <OfframpLayout>
       <motion.div
@@ -298,7 +329,7 @@ export default function SendPage() {
                     </p>
                     <p className='text-sm'>
                       <span className='font-medium'>Country:</span>{" "}
-                      {getCountryByCode(userWallet.country_code)?.name || ""}
+                      {countryInfo?.name ?? ""}
                     </p>
                   </div>
                 )}
@@ -335,6 +366,7 @@ export default function SendPage() {
               className='w-full'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}>
+              {/* Transaction not sent yet */}
               {!isTransactionSent && (
                 <Button onClick={handleSend} size='lg' className='w-full'>
                   {isTransactionLoading ? (
@@ -348,6 +380,7 @@ export default function SendPage() {
                 </Button>
               )}
 
+              {/* Transaction sent but still loading */}
               {isTransactionSent && isTransactionLoading && (
                 <Button disabled size='lg' className='w-full'>
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -355,6 +388,7 @@ export default function SendPage() {
                 </Button>
               )}
 
+              {/* Transaction success => execute off-ramp */}
               {isTransactionSent && isTransactionSuccess && (
                 <Button
                   onClick={handleExecuteOfframpRequest}
@@ -371,6 +405,7 @@ export default function SendPage() {
                 </Button>
               )}
 
+              {/* Transaction error => reset txHash to retry */}
               {isTransactionSent && isTransactionError && (
                 <Button
                   onClick={() => setTxHash(null)}
