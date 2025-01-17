@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { OfframpLayout } from "@/components/offramp-layout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
+import router from "next/router";
 
 //
 // 1) Hardcoded token info
@@ -61,6 +62,8 @@ export default function SendPage() {
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const router = useRouter();
+
   //
   // 4) Hooks
   //
@@ -89,7 +92,6 @@ export default function SendPage() {
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
   const requestData = useGetSingleOfframpRequest({ requestId });
-  console.log("requestData", requestData);
 
   // Transaction states
   const isTransactionSent = !!txHash;
@@ -110,7 +112,7 @@ export default function SendPage() {
     setError(null);
 
     try {
-      const wallet = await customerWallet.mutateAsync({
+      const { data: wallet } = await customerWallet.mutateAsync({
         providerUuid,
         payload: { phone_number: phoneNumber },
       });
@@ -146,8 +148,10 @@ export default function SendPage() {
     const foundFiatWallet = fiatWallets.data.find(
       (w) => w.currency === countryInfo.currency
     );
+    console.log("found", foundFiatWallet, fiatWallets);
     // Only update if it's different
     if (foundFiatWallet && foundFiatWallet.id !== walletToUse?.id) {
+      console.log("first", foundFiatWallet);
       setWalletToUse(foundFiatWallet);
     }
   }, [countryInfo, fiatWallets.data]); // removed walletToUse?.id
@@ -217,6 +221,14 @@ export default function SendPage() {
       );
     }
   };
+
+  useEffect(() => {
+    if (executeRequest.isSuccess) {
+      router.push(
+        `/status?referenceId=${requestId}&providerUuid=${providerUuid}`
+      );
+    }
+  }, [executeRequest.isSuccess, providerUuid, requestId, router]);
 
   //
   // 9) If provider is invalid, bail out

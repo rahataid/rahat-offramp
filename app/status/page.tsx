@@ -25,7 +25,7 @@ export default function StatusPage() {
         payload: { referenceId },
       });
       console.log("response", response);
-      setStatusData(response.data.data);
+      setStatusData(response);
     } catch (error) {
       console.error("Error fetching offramp status:", error);
     } finally {

@@ -111,7 +111,7 @@ export const useGetCustomerMobileMoneyWalletByPhone = () => {
         action: "get-customer-wallet-by-phone",
         payload: data.payload,
       });
-      return res?.data?.data || {};
+      return res?.data || {};
     },
   });
 };
