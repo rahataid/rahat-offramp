@@ -89,6 +89,7 @@ export default function SendPage() {
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
   const requestData = useGetSingleOfframpRequest({ requestId });
+  console.log("requestData", requestData);
 
   // Transaction states
   const isTransactionSent = !!txHash;
@@ -122,7 +123,7 @@ export default function SendPage() {
       console.error("Error fetching wallet:", err);
       setError("Failed to fetch wallet information. Please try again.");
     }
-  }, [phoneNumber, providerUuid, customerWallet]);
+  }, [phoneNumber, providerUuid]);
 
   //
   // 6) Effect: fetch user wallet only if phoneNumber exists and no userWallet yet

@@ -12,6 +12,7 @@ import { ArrowRight } from "lucide-react";
 
 export default function NetworkPage() {
   const { isConnected } = useAccount();
+  console.log("isConnected", isConnected);
   const router = useRouter();
   const searchParams = useSearchParams();
   const provider = searchParams.get("provider");

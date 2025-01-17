@@ -5,7 +5,7 @@ import api, { endpoints } from "@/lib/api";
 
 export const providers: OfframpProvider[] = [
   kotanipayProvider,
-  rampNetworkProvider,
+  // rampNetworkProvider,
 ];
 
 export const joinLocalAndApiProviders = (apiProviders: OfframpProvider[]) => {

@@ -46,7 +46,7 @@ export const useCreateOfframpRequest = () => {
   return useMutation<any, Error, Omit<any, "id">>({
     mutationFn: async (request) => {
       const res = await api.post(endpoints.offramps.create, request);
-      return res.data;
+      return res.data?.data;
     },
   });
 };
@@ -91,7 +91,7 @@ export const useGetSingleOfframpRequest = (payload: {
       const res = await api.get(endpoints.offramps.single, {
         params: payload,
       });
-      return res.data;
+      return res.data?.data;
     },
   });
 };
