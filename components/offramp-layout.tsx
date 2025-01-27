@@ -8,7 +8,8 @@ const steps = [
   { path: "/providers", label: "Select Provider" },
   { path: "/network", label: "Select Network" },
   { path: "/details", label: "Fill Details" },
-  { path: "/send", label: "Send Crypto" },
+  { path: "/send-token", label: "Send Crypto" },
+  { path: "/execute-offramp", label: "Execute Offramp" },
   { path: "/status", label: "Track Status" },
 ];
 
