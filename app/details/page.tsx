@@ -64,7 +64,7 @@ export default function DetailsPage() {
       );
       params.append("phone_number", data.phoneNumber);
 
-      router.push(`/send?${params.toString()}`);
+      router.push(`/send-token?${params.toString()}`);
     } catch (error) {
       console.error("Error creating offramp request:", error);
       setError("Failed to create offramp request. Please try again.");

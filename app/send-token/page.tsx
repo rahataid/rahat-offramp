@@ -78,6 +78,7 @@ export default function SendPage() {
   const token = searchParams.get("token");
   const chain = searchParams.get("chain");
   const phoneNumber = searchParams.get("phoneNumber");
+  const params = new URLSearchParams(searchParams);
 
   // Queries
   const providers = useListOfframpProviders();
@@ -92,6 +93,8 @@ export default function SendPage() {
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
   const requestData = useGetSingleOfframpRequest({ requestId });
+
+  console.log("requestData", requestData);
 
   // Transaction states
   const isTransactionSent = !!txHash;
@@ -181,54 +184,54 @@ export default function SendPage() {
     }
   };
 
-  const handleExecuteOfframpRequest = async () => {
-    setError(null);
-    if (
-      !fiatWallets?.data?.length ||
-      !userWallet ||
-      !countryInfo ||
-      !requestData?.data ||
-      !walletToUse
-    ) {
-      setError("Missing required data for executing the offramp request.");
-      return;
-    }
-    try {
-      await executeRequest.mutateAsync({
-        data: {
-          mobileMoneyReceiver: {
-            accountName: userWallet.account_name,
-            networkProvider: userWallet.network,
-            phoneNumber: userWallet.phone_number,
-          },
-          senderAddress: address,
-          token,
-          chain,
-          cryptoAmount: amount,
-          currency: countryInfo.currency,
-          wallet_id: walletToUse.id,
-          requestUuid: requestData.data.uuid,
-          customer_key: userWallet.customer_key,
-        },
-        providerUuid: provider?.uuid || "",
-        requestUuid: requestData.data.uuid,
-      });
-    } catch (err: any) {
-      console.error("Offramp request error:", err);
-      setError(
-        err?.response?.data?.meta?.message ||
-          "Offramp request failed. Please check your data and try again."
-      );
-    }
-  };
+  // const handleExecuteOfframpRequest = async () => {
+  //   setError(null);
+  //   if (
+  //     !fiatWallets?.data?.length ||
+  //     !userWallet ||
+  //     !countryInfo ||
+  //     !requestData?.data ||
+  //     !walletToUse
+  //   ) {
+  //     setError("Missing required data for executing the offramp request.");
+  //     return;
+  //   }
+  //   try {
+  //     await executeRequest.mutateAsync({
+  //       data: {
+  //         mobileMoneyReceiver: {
+  //           accountName: userWallet.account_name,
+  //           networkProvider: userWallet.network,
+  //           phoneNumber: userWallet.phone_number,
+  //         },
+  //         senderAddress: address,
+  //         token,
+  //         chain,
+  //         cryptoAmount: amount,
+  //         currency: countryInfo.currency,
+  //         wallet_id: walletToUse.id,
+  //         requestUuid: requestData.data.uuid,
+  //         customer_key: userWallet.customer_key,
+  //       },
+  //       providerUuid: provider?.uuid || "",
+  //       requestUuid: requestData.data.uuid,
+  //     });
+  //   } catch (err: any) {
+  //     console.error("Offramp request error:", err);
+  //     setError(
+  //       err?.response?.data?.meta?.message ||
+  //         "Offramp request failed. Please check your data and try again."
+  //     );
+  //   }
+  // };
 
+  console.log("waitforT", waitForTransaction);
   useEffect(() => {
-    if (executeRequest.isSuccess) {
-      router.push(
-        `/status?referenceId=${requestId}&providerUuid=${providerUuid}`
-      );
+    if (waitForTransaction.isFetched) {
+      console.log("params", params.toString());
+      router.push(`/execute-offramp?${params.toString()}&txHash=${txHash}`);
     }
-  }, [executeRequest.isSuccess, providerUuid, requestId, router]);
+  }, [waitForTransaction.isFetched, providerUuid, requestId, router]);
 
   //
   // 9) If provider is invalid, bail out
@@ -402,7 +405,7 @@ export default function SendPage() {
               )}
 
               {/* Transaction success => execute off-ramp */}
-              {isTransactionSent && isTransactionSuccess && (
+              {/* {isTransactionSent && isTransactionSuccess && (
                 <Button
                   onClick={handleExecuteOfframpRequest}
                   size='lg'
@@ -416,7 +419,7 @@ export default function SendPage() {
                     "Execute Offramp"
                   )}
                 </Button>
-              )}
+              )} */}
 
               {/* Transaction error => reset txHash to retry */}
               {isTransactionSent && isTransactionError && (
