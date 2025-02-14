@@ -29,6 +29,7 @@ export const useListOfframpProviders = () => {
     queryKey: ["offrampProviders"],
     queryFn: async () => {
       const res = await api.get(endpoints.offramps.providers.list);
+
       const sluggedData = res.data?.data.map((d) => {
         const slug = d.name.toLowerCase().replace(/\s/g, "") + "Provider";
         return {
