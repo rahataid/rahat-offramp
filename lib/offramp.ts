@@ -20,7 +20,6 @@ export type OfframpData = {
   cryptoAmount: number;
   senderAddress: string;
   wallet_id: string;
-  request_id: string;
   customer_key: string;
 };
 
@@ -57,14 +56,12 @@ export const useExecuteOfframpRequest = () => {
     Error,
     {
       providerUuid: string;
-      requestUuid: string;
       data: OfframpData;
     }
   >({
-    mutationFn: async ({ providerUuid, requestUuid, data }) => {
+    mutationFn: async ({ providerUuid, data }) => {
       const res = await api.post(endpoints.offramps.execute, {
         providerUuid,
-        requestUuid,
         data,
       });
       return res.data;

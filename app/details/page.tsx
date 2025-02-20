@@ -9,10 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   useCreateOfframpRequest,
+  useExecuteOfframpRequest,
+  useGetCustomerMobileMoneyWalletByPhone,
+  useGetFiatWallets,
   useListOfframpProviders,
 } from "@/lib/offramp";
 import { getProviderBySlug } from "@/providers";
 import { ProviderFormData } from "@/types/provider";
+import { getCountryByCode } from "@/utils/misc";
 
 export default function DetailsPage() {
   const router = useRouter();
@@ -22,8 +26,10 @@ export default function DetailsPage() {
   const chain = searchParams.get("chain");
   const token = searchParams.get("token");
   const providers = useListOfframpProviders();
-  const createOfframpRequest = useCreateOfframpRequest();
+  const executeOfframp = useExecuteOfframpRequest();
   const account = useAccount();
+  const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
+  const fiatWallets = useGetFiatWallets(providerUuid);
 
   const [formData, setFormData] = useState<ProviderFormData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,20 +54,44 @@ export default function DetailsPage() {
     setFormData(data);
     setError(null);
     const params = new URLSearchParams(searchParams);
-    try {
-      const res = await createOfframpRequest.mutateAsync({
-        providerUuid,
-        chain,
-        token,
-        amount: data.amount,
+    const ctry = getCountryByCode(data?.walletInfo?.country_code);
+    const { data: wallet } = await customerWallet.mutateAsync({
+      providerUuid,
+      payload: { phone_number: data?.walletInfo?.phone_number },
+    });
+    const foundFiatWallet = fiatWallets.data.find(
+      (w) => w.currency === ctry.currency
+    );
+    const executionData = {
+      data: {
+        mobileMoneyReceiver: {
+          accountName: data?.walletInfo?.account_name,
+          networkProvider: data?.walletInfo?.network,
+          phoneNumber: data?.walletInfo?.phone_number,
+        },
         senderAddress: account.address,
-      });
+        token,
+        chain,
+        cryptoAmount: data?.amount,
+        currency: ctry.currency,
+        wallet_id: foundFiatWallet.id,
+        // requestUuid: requestData.data.uuid,
+        customer_key: data?.walletInfo.customer_key,
+      },
+      providerUuid: provider?.uuid || "",
+      // requestUuid: requestData.data.uuid,
+    };
+    console.log("ctry", ctry, executionData, data);
+    try {
+      const {
+        data: { kotaniPayResponse },
+      } = await executeOfframp.mutateAsync(executionData);
 
-      Object.entries({ ...data, requestId: res?.requestId }).forEach(
-        ([key, value]) => {
-          params.append(key, value);
-        }
+      params.append(
+        "referenceId",
+        kotaniPayResponse?.referenceId || kotaniPayResponse?.reference_id
       );
+
       params.append("phone_number", data.phoneNumber);
 
       router.push(`/send-token?${params.toString()}`);

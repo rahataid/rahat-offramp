@@ -97,8 +97,6 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
     }
   }, [debouncedPhoneNumber]);
 
-  console.log("walletInfo", { walletInfo, transactionByPhone });
-
   const handleCreateAccount = async (data: z.infer<typeof formSchema>) => {
     try {
       await createAccount(data).then((res) => {
@@ -115,7 +113,14 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+      <form
+        onSubmit={form.handleSubmit((d) =>
+          onSubmit({
+            ...d,
+            walletInfo,
+          })
+        )}
+        className='space-y-6'>
         <FormField
           control={form.control}
           name='phoneNumber'
