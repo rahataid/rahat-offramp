@@ -5,17 +5,22 @@ import api, { endpoints } from "@/lib/api";
 
 export const providers: OfframpProvider[] = [
   kotanipayProvider,
-  rampNetworkProvider,
+  // rampNetworkProvider,
 ];
 
 export const joinLocalAndApiProviders = (apiProviders: OfframpProvider[]) => {
-  return providers.map((localProvider) => {
-    const apiProvider = apiProviders.find((p) => p.slug === localProvider.id);
-    return {
-      ...localProvider,
-      ...apiProvider,
-    };
-  });
+  console.log("providers", providers);
+  return apiProviders?.length
+    ? providers.map((localProvider) => {
+        const apiProvider = apiProviders.find(
+          (p) => p.slug === localProvider.id
+        );
+        return {
+          ...localProvider,
+          ...apiProvider,
+        };
+      })
+    : [];
 };
 
 export async function getProviders(): Promise<OfframpProvider[]> {

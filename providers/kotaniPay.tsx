@@ -16,7 +16,8 @@ import {
 import { OfframpFormProps, OfframpProvider } from "@/types/provider";
 import { formatCasesToReadable } from "@/utils/formatCasesToReadable";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import router from "next/router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDebounce } from "use-debounce";
@@ -32,11 +33,14 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
   const [walletInfo, setWalletInfo] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [transactionByPhone, setTransactionsByPhone] = useState([]);
   const getCustomerWalletByPhone = useGetCustomerMobileMoneyWalletByPhone();
   const createCustomerWallet = useCreateCustomerMobileMoneyWallet();
   const searchParams = useSearchParams();
   const providerUuid = searchParams.get("providerUuid");
   const chain = searchParams.get("chain");
+
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,6 +58,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         phone_number: phoneNumber,
       },
     });
+    console.log("w", walletInfo);
     return walletInfo;
   }
   async function createAccount(data: z.infer<typeof formSchema>) {
@@ -81,7 +86,8 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
       checkWalletInfo(debouncedPhoneNumber)
         .then((info) => {
           console.log("info", info);
-          setWalletInfo(info);
+          setWalletInfo(info.data);
+          setTransactionsByPhone(info.transaction);
           setIsLoading(false);
         })
         .catch(() => {
@@ -102,9 +108,19 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
     }
   };
 
+  const hasTransactionsPending = !!transactionByPhone?.length;
+  console.log("first", hasTransactionsPending);
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+      <form
+        onSubmit={form.handleSubmit((d) =>
+          onSubmit({
+            ...d,
+            walletInfo,
+          })
+        )}
+        className='space-y-6'>
         <FormField
           control={form.control}
           name='phoneNumber'
@@ -134,19 +150,34 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
             Create Account
           </Button>
         )}
-        <FormField
-          control={form.control}
-          name='amount'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Amount to send</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
+        {hasTransactionsPending ? (
+          <>
+            You already have pending transactions
+            <Button
+              onClick={() =>
+                router.push(
+                  `/status?referenceId=${transactionByPhone[0]?.referenceId}&providerUuid=${providerUuid}`
+                )
+              }>
+              View Status
+            </Button>
+          </>
+        ) : (
+          <FormField
+            control={form.control}
+            name='amount'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Amount to send</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <Button type='submit' className='w-full mt-2'>
           Submit
         </Button>

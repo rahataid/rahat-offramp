@@ -46,6 +46,14 @@ export default function ProvidersPage() {
           }}
           initial='hidden'
           animate='show'>
+          {
+            // Add a fallback UI for when there are no providers
+            !providers.data.length && (
+              <div className='text-center text-muted-foreground'>
+                No providers available
+              </div>
+            )
+          }
           {providers.data.map((provider) => (
             <motion.div
               key={provider.id}

@@ -112,7 +112,6 @@ export default function StatusPage() {
 
   // If we have data, display it
   const { status, rate, ...details } = statusData || {};
-
   return (
     <OfframpLayout>
       <motion.div

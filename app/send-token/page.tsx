@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { OfframpLayout } from "@/components/offramp-layout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { ConnectKitButton } from "connectkit";
 import { motion } from "framer-motion";
 import { Copy, Loader2 } from "lucide-react";
 import {
+  useCheckOfframpStatus,
   useExecuteOfframpRequest,
   useGetCustomerMobileMoneyWalletByPhone,
   useGetFiatWallets,
@@ -24,6 +25,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
+import router from "next/router";
 
 //
 // 1) Hardcoded token info
@@ -62,9 +64,12 @@ export default function SendPage() {
   const [userWallet, setUserWallet] = useState<WalletInfo | null>(null);
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
   const [walletToUse, setWalletToUse] = useState<any>(null);
+  const [offrampStatus, setOfframpStatus] = useState<any>(null);
 
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const router = useRouter();
 
   //
   // 4) Hooks
@@ -73,19 +78,19 @@ export default function SendPage() {
   const { address } = useAccount();
 
   // Query params
-  const requestId = searchParams.get("requestId");
+  const referenceId = searchParams.get("referenceId");
   const providerId = searchParams.get("provider");
   const providerUuid = searchParams.get("providerUuid");
-  const amount = searchParams.get("amount") || "0";
   const token = searchParams.get("token");
   const chain = searchParams.get("chain");
-  const phoneNumber = searchParams.get("phoneNumber");
+  const phoneNumber = searchParams.get("phone_number");
+  const params = new URLSearchParams(searchParams);
 
   // Queries
   const providers = useListOfframpProviders();
   const customerWallet = useGetCustomerMobileMoneyWalletByPhone();
   const fiatWallets = useGetFiatWallets(providerUuid);
-  const executeRequest = useExecuteOfframpRequest();
+  const offRampStatus = useCheckOfframpStatus();
 
   const sendTokenTransaction = useWriteContract();
   const waitForTransaction = useWaitForTransactionReceipt({ hash: txHash });
@@ -93,7 +98,10 @@ export default function SendPage() {
   // Token & request data
   const tokenData = token ? TOKENS[token] : null;
   const decimals = tokenData?.decimals || 18;
-  const requestData = useGetSingleOfframpRequest({ requestId });
+
+  // const requestData = useGetSingleOfframpRequest({ requestId });
+
+  // console.log("requestData", requestData);
 
   // Transaction states
   const isTransactionSent = !!txHash;
@@ -106,6 +114,19 @@ export default function SendPage() {
     ? getProviderBySlug(providerId, providers.data)
     : null;
 
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const response = await offRampStatus.mutateAsync({
+        providerUuid,
+        payload: { referenceId },
+      });
+      setOfframpStatus(response);
+    };
+    if (referenceId) {
+      fetchStatus();
+    }
+  }, [providerUuid, referenceId]);
+
   //
   // 5) Only fetch user wallet data once, based on phoneNumber
   //
@@ -114,12 +135,13 @@ export default function SendPage() {
     setError(null);
 
     try {
-      const wallet = await customerWallet.mutateAsync({
+      const { data: wallet } = await customerWallet.mutateAsync({
         providerUuid,
         payload: { phone_number: phoneNumber },
       });
       if (wallet) {
         const ctry = getCountryByCode(wallet.country_code);
+
         setUserWallet(wallet);
         setCountryInfo(ctry || null);
       }
@@ -127,12 +149,11 @@ export default function SendPage() {
       console.error("Error fetching wallet:", err);
       setError("Failed to fetch wallet information. Please try again.");
     }
-  }, [phoneNumber, providerUuid, customerWallet]);
+  }, [phoneNumber, providerUuid]);
 
-  //
   // 6) Effect: fetch user wallet only if phoneNumber exists and no userWallet yet
   //    -> This only runs once because once userWallet is set, it won't re-run.
-  //
+
   useEffect(() => {
     if (phoneNumber && !userWallet) {
       fetchWallet();
@@ -150,8 +171,10 @@ export default function SendPage() {
     const foundFiatWallet = fiatWallets.data.find(
       (w) => w.currency === countryInfo.currency
     );
+    console.log("found", foundFiatWallet, fiatWallets);
     // Only update if it's different
     if (foundFiatWallet && foundFiatWallet.id !== walletToUse?.id) {
+      console.log("first", foundFiatWallet);
       setWalletToUse(foundFiatWallet);
     }
   }, [countryInfo, fiatWallets.data]); // removed walletToUse?.id
@@ -161,17 +184,32 @@ export default function SendPage() {
   //
   const handleSend = async () => {
     setError(null);
-    if (!tokenData || !requestData?.data?.escrowAddress) {
+    if (
+      !tokenData ||
+      !offrampStatus.escrowAddress ||
+      !offrampStatus.cryptoAmount
+    ) {
       setError("Token data or escrow address is missing.");
       return;
     }
+
     try {
-      const txResponse = await sendTokenTransaction.writeContractAsync({
+      const valueAsString = String(offrampStatus.cryptoAmount); // ensure it's a string
+
+      const writeContractData = {
         address: tokenData.address,
         abi: erc20Abi,
         functionName: "transfer",
-        args: [requestData.data.escrowAddress, parseUnits(amount, decimals)],
-      });
+        args: [
+          offrampStatus.escrowAddress,
+          parseUnits(valueAsString, decimals), // now a string
+        ],
+        account: address,
+      };
+
+      const txResponse = await sendTokenTransaction.writeContractAsync(
+        writeContractData as any
+      );
       if (txResponse) {
         setTxHash(txResponse);
       }
@@ -181,46 +219,14 @@ export default function SendPage() {
     }
   };
 
-  const handleExecuteOfframpRequest = async () => {
-    setError(null);
-    if (
-      !fiatWallets?.data?.length ||
-      !userWallet ||
-      !countryInfo ||
-      !requestData?.data ||
-      !walletToUse
-    ) {
-      setError("Missing required data for executing the offramp request.");
-      return;
-    }
-    try {
-      await executeRequest.mutateAsync({
-        data: {
-          mobileMoneyReceiver: {
-            accountName: userWallet.account_name,
-            networkProvider: userWallet.network,
-            phoneNumber: userWallet.phone_number,
-          },
-          senderAddress: address,
-          token,
-          chain,
-          cryptoAmount: amount,
-          currency: countryInfo.currency,
-          wallet_id: walletToUse.id,
-          requestUuid: requestData.data.uuid,
-          customer_key: userWallet.customer_key,
-        },
-        providerUuid: provider?.uuid || "",
-        requestUuid: requestData.data.uuid,
-      });
-    } catch (err: any) {
-      console.error("Offramp request error:", err);
-      setError(
-        err?.response?.data?.meta?.message ||
-          "Offramp request failed. Please check your data and try again."
+  useEffect(() => {
+    if (waitForTransaction.isFetched) {
+      console.log("params", params.toString());
+      router.push(
+        `/status?referenceId=${referenceId}&providerUuid=${providerUuid}`
       );
     }
-  };
+  }, [waitForTransaction.isFetched, providerUuid, referenceId, router]);
 
   //
   // 9) If provider is invalid, bail out
@@ -248,7 +254,7 @@ export default function SendPage() {
           <p className='text-xl text-muted-foreground'>
             Transfer{" "}
             <span className='font-semibold'>
-              {amount} {token}
+              {offrampStatus?.cryptoAmount} {offrampStatus?.rate?.from}
             </span>{" "}
             to complete your{" "}
             <span className='font-semibold'>{provider.name}</span> offramp
@@ -273,7 +279,7 @@ export default function SendPage() {
               <AlertDescription className='text-center font-medium'>
                 Please send exactly{" "}
                 <span className='font-bold'>
-                  {amount} {token}
+                  {offrampStatus?.cryptoAmount} {offrampStatus?.rate?.from}
                 </span>{" "}
                 to the following address to process your offramp request:
               </AlertDescription>
@@ -283,12 +289,10 @@ export default function SendPage() {
               whileHover={{ scale: 1.02 }}
               className='p-4 bg-gray-100 rounded-lg break-all text-center cursor-pointer relative overflow-hidden group'
               onClick={() =>
-                navigator.clipboard.writeText(
-                  requestData?.data?.escrowAddress || ""
-                )
+                navigator.clipboard.writeText(offrampStatus.escrowAddress || "")
               }>
               <span className='text-sm font-medium'>
-                {requestData?.data?.escrowAddress || "No address available"}
+                {offrampStatus?.escrowAddress || "No address available"}
               </span>
               <span className='absolute inset-0 flex items-center justify-center bg-primary text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
                 <Copy className='w-5 h-5 mr-2' /> Click to copy
@@ -309,7 +313,7 @@ export default function SendPage() {
                 <div className='bg-gray-100 p-4 rounded-lg text-center'>
                   <p className='text-sm font-medium'>Amount</p>
                   <p className='text-lg'>
-                    {amount} {token}
+                    {offrampStatus?.cryptoAmount} {offrampStatus?.rate?.from}
                   </p>
                 </div>
               </div>
@@ -394,7 +398,7 @@ export default function SendPage() {
               )}
 
               {/* Transaction success => execute off-ramp */}
-              {isTransactionSent && isTransactionSuccess && (
+              {/* {isTransactionSent && isTransactionSuccess && (
                 <Button
                   onClick={handleExecuteOfframpRequest}
                   size='lg'
@@ -408,7 +412,7 @@ export default function SendPage() {
                     "Execute Offramp"
                   )}
                 </Button>
-              )}
+              )} */}
 
               {/* Transaction error => reset txHash to retry */}
               {isTransactionSent && isTransactionError && (

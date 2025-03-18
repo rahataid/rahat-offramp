@@ -20,7 +20,6 @@ export type OfframpData = {
   cryptoAmount: number;
   senderAddress: string;
   wallet_id: string;
-  request_id: string;
   customer_key: string;
 };
 
@@ -29,6 +28,7 @@ export const useListOfframpProviders = () => {
     queryKey: ["offrampProviders"],
     queryFn: async () => {
       const res = await api.get(endpoints.offramps.providers.list);
+
       const sluggedData = res.data?.data.map((d) => {
         const slug = d.name.toLowerCase().replace(/\s/g, "") + "Provider";
         return {
@@ -46,7 +46,7 @@ export const useCreateOfframpRequest = () => {
   return useMutation<any, Error, Omit<any, "id">>({
     mutationFn: async (request) => {
       const res = await api.post(endpoints.offramps.create, request);
-      return res.data;
+      return res.data?.data;
     },
   });
 };
@@ -56,14 +56,12 @@ export const useExecuteOfframpRequest = () => {
     Error,
     {
       providerUuid: string;
-      requestUuid: string;
       data: OfframpData;
     }
   >({
-    mutationFn: async ({ providerUuid, requestUuid, data }) => {
+    mutationFn: async ({ providerUuid, data }) => {
       const res = await api.post(endpoints.offramps.execute, {
         providerUuid,
-        requestUuid,
         data,
       });
       return res.data;
@@ -91,7 +89,7 @@ export const useGetSingleOfframpRequest = (payload: {
       const res = await api.get(endpoints.offramps.single, {
         params: payload,
       });
-      return res.data;
+      return res.data?.data;
     },
   });
 };
@@ -111,7 +109,7 @@ export const useGetCustomerMobileMoneyWalletByPhone = () => {
         action: "get-customer-wallet-by-phone",
         payload: data.payload,
       });
-      return res?.data?.data || {};
+      return res?.data || {};
     },
   });
 };
