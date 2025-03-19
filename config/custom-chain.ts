@@ -8,7 +8,7 @@ import {
 
 export const customChain = defineChain({
   id: CHAIN_ID,
-  name: "",
+  name: process.env.NEXT_PUBLIC_CHAIN_NAME,
   nativeCurrency: {
     name: OFFRAMP_TOKEN,
     symbol: OFFRAMP_TOKEN,

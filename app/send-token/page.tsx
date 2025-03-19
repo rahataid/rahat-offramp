@@ -210,6 +210,7 @@ export default function SendPage() {
       const txResponse = await sendTokenTransaction.writeContractAsync(
         writeContractData as any
       );
+
       if (txResponse) {
         setTxHash(txResponse);
       }
@@ -218,6 +219,7 @@ export default function SendPage() {
       setError("Transaction failed. Please try again.");
     }
   };
+  console.log("txHash", txHash, waitForTransaction);
 
   useEffect(() => {
     if (waitForTransaction.isFetched) {
