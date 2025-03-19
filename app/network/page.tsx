@@ -5,24 +5,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { OFFRAMP_NETWORK, OFFRAMP_TOKEN } from "@/config/constants";
 import { ConnectKitButton } from "connectkit";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount } from "wagmi";
 import { ArrowRight } from "lucide-react";
+import { useEffect } from "react";
+import { useAccount } from "wagmi";
 
 export default function NetworkPage() {
+  // Get connection status from useAccount at the top level
   const { isConnected } = useAccount();
-  console.log("isConnected", isConnected);
   const router = useRouter();
   const searchParams = useSearchParams();
   const provider = searchParams.get("provider");
   const providerUuid = searchParams.get("providerUuid");
+  const reloaded = searchParams.get("reloaded"); // Check if page was already reloaded
 
+  // Handle navigation to the details page
   const handleContinue = () => {
     router.push(
       `/details?provider=${provider}&chain=${OFFRAMP_NETWORK}&token=${OFFRAMP_TOKEN}&providerUuid=${providerUuid}`
     );
   };
+
+  // Effect to reload the page after connection
+  useEffect(() => {
+    if (isConnected && !reloaded) {
+      // Add 'reloaded' parameter to prevent infinite reloads
+      const newUrl = `${
+        window.location.pathname
+      }?${searchParams.toString()}&reloaded=true`;
+      window.location.href = newUrl; // Reloads the page
+    }
+  }, [isConnected, reloaded, searchParams]);
 
   return (
     <OfframpLayout>
@@ -66,32 +80,44 @@ export default function NetworkPage() {
             </div>
 
             <div className='flex flex-col items-center gap-4 pt-4'>
-              {!isConnected ? (
-                <div className='w-full'>
-                  <ConnectKitButton.Custom>
-                    {({ show }) => (
-                      <Button
-                        size='lg'
-                        onClick={show}
-                        className='w-full py-6 text-lg font-semibold'>
-                        Connect Wallet
-                      </Button>
+              <ConnectKitButton.Custom>
+                {({ isConnecting, show }) => (
+                  <AnimatePresence mode='wait'>
+                    {!isConnected ? (
+                      <motion.div
+                        key='connect'
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className='w-full'>
+                        <Button
+                          size='lg'
+                          onClick={show}
+                          disabled={isConnecting}
+                          className='w-full py-6 text-lg font-semibold'>
+                          {isConnecting ? "Connecting..." : "Connect Wallet"}
+                        </Button>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key='continue'
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className='w-full'>
+                        <Button
+                          size='lg'
+                          onClick={handleContinue}
+                          className='w-full py-6 text-lg font-semibold'>
+                          Continue <ArrowRight className='ml-2 h-5 w-5' />
+                        </Button>
+                      </motion.div>
                     )}
-                  </ConnectKitButton.Custom>
-                </div>
-              ) : (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className='w-full'>
-                  <Button
-                    size='lg'
-                    onClick={handleContinue}
-                    className='w-full py-6 text-lg font-semibold'>
-                    Continue <ArrowRight className='ml-2 h-5 w-5' />
-                  </Button>
-                </motion.div>
-              )}
+                  </AnimatePresence>
+                )}
+              </ConnectKitButton.Custom>
             </div>
           </CardContent>
         </Card>

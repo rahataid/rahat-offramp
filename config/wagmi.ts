@@ -3,6 +3,8 @@ import { customChain } from "./custom-chain";
 
 // Create wagmi config
 export const config = createConfig({
+  syncConnectedChain: true,
+
   chains: [customChain],
   transports: {
     // [mainnet.id]: http(),

@@ -41,9 +41,10 @@ export default function DetailsPage() {
   if (!provider) {
     return (
       <div className='flex items-center justify-center h-screen'>
-        <Alert variant='destructive'>
+        <Alert variant='default'>
           <AlertDescription>
-            Invalid provider. Please check the URL and try again.
+            Verifying Provider... Please wait.
+            {/* Invalid provider. Please check the URL and try again. */}
           </AlertDescription>
         </Alert>
       </div>

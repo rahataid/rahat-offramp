@@ -8,31 +8,20 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useCheckOfframpStatus } from "@/lib/offramp";
 import { formatCasesToReadable } from "@/utils/formatCasesToReadable";
-import { useChainId } from "wagmi";
-import { useChains } from "connectkit";
+import { Button } from "@/components/ui/button";
 
 export default function StatusPage() {
   const searchParams = useSearchParams();
   const referenceId = searchParams.get("referenceId");
   const providerUuid = searchParams.get("providerUuid") as string;
 
-  // Store fetched status data & whether first fetch is done
   const [statusData, setStatusData] = useState<any>(null);
   const [hasFetched, setHasFetched] = useState(false);
-
-  // For the countdown to next refresh (in seconds)
   const [refreshCounter, setRefreshCounter] = useState<number>(10);
-
-  // Whether we are fetching right now in the background
   const [isFetching, setIsFetching] = useState(false);
 
-  // Hook for checking status
   const offRampStatus = useCheckOfframpStatus();
 
-  /**
-   *  Re-fetch the Offramp status.
-   *  This runs in the background and does not block the UI.
-   */
   const fetchOfframpStatus = async () => {
     if (!referenceId) return;
     try {
@@ -46,28 +35,24 @@ export default function StatusPage() {
       console.error("Failed to fetch Offramp Status:", err);
     } finally {
       setIsFetching(false);
-      setHasFetched(true); // Mark that we've done at least one fetch
+      setHasFetched(true);
     }
   };
 
-  // Initial fetch on mount (if referenceId is present)
   useEffect(() => {
     if (referenceId) {
       fetchOfframpStatus();
     }
   }, [referenceId]);
 
-  // Interval for automatic refresh
   useEffect(() => {
     if (!referenceId) return;
 
-    // Decrement every second
     const intervalId = setInterval(() => {
       setRefreshCounter((prev) => {
-        // If we're at 1 => time to refresh
         if (prev <= 1) {
-          fetchOfframpStatus(); // do background fetch
-          return 10; // reset countdown to 10
+          fetchOfframpStatus();
+          return 10;
         }
         return prev - 1;
       });
@@ -78,11 +63,21 @@ export default function StatusPage() {
     }
 
     return () => clearInterval(intervalId);
-  }, [referenceId]);
+  }, [referenceId, statusData]);
 
-  // If we haven't fetched at all, we can show a partial placeholder or "Loading..."
-  // But we won't block the entire screen with a spinner.
-  // We'll show a minimal fallback until we have data:
+  // Helper function to determine BaseScan URL based on key
+  const getExplorerLink = (key: string, value: string) => {
+    if (typeof value !== "string" || !value.startsWith("0x")) {
+      return null;
+    }
+    if (key === "transactionHash") {
+      return `https://basescan.org/tx/${value}`;
+    } else if (key.toLowerCase().includes("address")) {
+      return `https://basescan.org/address/${value}`;
+    }
+    return null;
+  };
+
   if (!hasFetched && !statusData) {
     return (
       <OfframpLayout>
@@ -94,7 +89,6 @@ export default function StatusPage() {
     );
   }
 
-  // If we have fetched but no data found, show a simple message
   if (hasFetched && !statusData) {
     return (
       <OfframpLayout>
@@ -110,7 +104,6 @@ export default function StatusPage() {
     );
   }
 
-  // If we have data, display it
   const { status, rate, ...details } = statusData || {};
   return (
     <OfframpLayout>
@@ -139,7 +132,6 @@ export default function StatusPage() {
         <Card className='shadow-lg border border-gray-200 rounded-lg'>
           <CardContent className='p-6'>
             <div className='flex flex-col items-center gap-6'>
-              {/* Animate status icon */}
               <div className='flex items-center justify-center'>
                 {status === "PENDING" && (
                   <motion.div
@@ -173,12 +165,10 @@ export default function StatusPage() {
                 )}
               </div>
 
-              {/* Status label */}
               <h3 className='text-2xl font-bold capitalize'>
                 {status || "UNKNOWN"}
               </h3>
 
-              {/* Extra details */}
               <div className='w-full space-y-6'>
                 <div>
                   <h4 className='text-lg font-medium mb-2'>
@@ -193,13 +183,18 @@ export default function StatusPage() {
                         {typeof value === "object" ? (
                           JSON.stringify(value, null, 2)
                         ) : typeof value === "string" &&
-                          value.includes("0x") ? (
-                          <a
-                            href={`https://etherscan.io/address/${value}`}
-                            target='_blank'
-                            rel='noopener noreferrer'>
-                            {value.slice(0, 6)}...{value.slice(-4)}
-                          </a>
+                          value.startsWith("0x") ? (
+                          getExplorerLink(key, value) ? (
+                            <a
+                              href={getExplorerLink(key, value)}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='text-blue-600 hover:underline'>
+                              {value.slice(0, 6)}...{value.slice(-4)}
+                            </a>
+                          ) : (
+                            value
+                          )
                         ) : (
                           String(value)
                         )}
@@ -219,13 +214,19 @@ export default function StatusPage() {
                           <span className='font-medium'>
                             {formatCasesToReadable(key)}:
                           </span>{" "}
-                          {typeof value === "string" && value.includes("0x") ? (
-                            <a
-                              href={`https://etherscan.io/address/${value}`}
-                              target='_blank'
-                              rel='noopener noreferrer'>
-                              {value.slice(0, 6)}...{value.slice(-4)}
-                            </a>
+                          {typeof value === "string" &&
+                          value.startsWith("0x") ? (
+                            getExplorerLink(key, value) ? (
+                              <a
+                                href={getExplorerLink(key, value)}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className='text-blue-600 hover:underline'>
+                                {value.slice(0, 6)}...{value.slice(-4)}
+                              </a>
+                            ) : (
+                              value
+                            )
                           ) : (
                             String(value)
                           )}
@@ -236,13 +237,24 @@ export default function StatusPage() {
                 )}
 
                 {status === "SUCCESSFUL" && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className='text-green-600 font-medium text-center mt-4'>
-                    Your offramp request has been successfully processed!
-                  </motion.p>
+                  <>
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className='text-green-600 font-medium text-center mt-4'>
+                      Your offramp request has been successfully processed!
+                    </motion.p>
+                    <Button
+                      variant='outline'
+                      className='mt-4 w-full'
+                      onClick={() => {
+                        window.location.href = "/";
+                      }}>
+                      Offramp Again
+                      <span className='ml-2'>→</span>
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
