@@ -8,7 +8,6 @@ export const config = createConfig({
   syncConnectedChain: true,
   connectors: [
     coinbaseWallet({}),
-    metaMask(),
   ],
   chains: [customChain],
   transports: {
