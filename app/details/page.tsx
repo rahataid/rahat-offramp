@@ -58,7 +58,9 @@ export default function DetailsPage() {
     const ctry = getCountryByCode(data?.walletInfo?.country_code);
     const { data: wallet } = await customerWallet.mutateAsync({
       providerUuid,
-      payload: { phone_number: data?.walletInfo?.phone_number },
+      payload: {
+        phone_number: data?.walletInfo?.phone_number?.replace(/\s/g, ""),
+      },
     });
     const foundFiatWallet = fiatWallets.data.find(
       (w) => w.currency === ctry.currency

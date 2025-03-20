@@ -76,7 +76,10 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
 
   const countryCode = form.watch("countryCode");
   const phoneNumber = form.watch("phoneNumber");
-  const [debouncedPhoneNumber] = useDebounce(phoneNumber, 100);
+  const [debouncedPhoneNumber] = useDebounce(
+    phoneNumber?.replace(/\s/g, ""),
+    100
+  );
 
   console.log("first", form.formState.errors);
 
@@ -108,8 +111,11 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
     }
   };
 
-  const hasTransactionsPending = !!transactionByPhone?.length;
-  console.log("first", hasTransactionsPending);
+  const hasTransactionsPending = transactionByPhone.some(
+    (transaction) =>
+      transaction.status !== "COMPLETED" && transaction.status !== "CANCELLED"
+  );
+  console.log("first", hasTransactionsPending, transactionByPhone);
 
   return (
     <Form {...form}>
