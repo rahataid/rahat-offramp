@@ -137,7 +137,7 @@ export default function SendPage() {
     try {
       const { data: wallet } = await customerWallet.mutateAsync({
         providerUuid,
-        payload: { phone_number: phoneNumber },
+        payload: { phone_number: phoneNumber?.replace(/\s/g, "") },
       });
       if (wallet) {
         const ctry = getCountryByCode(wallet.country_code);
