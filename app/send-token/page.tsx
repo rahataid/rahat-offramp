@@ -236,7 +236,7 @@ export default function SendPage() {
   if (!provider) {
     return (
       <div className='text-center text-2xl font-semibold text-red-500'>
-        Invalid provider
+        Verifying provider...
       </div>
     );
   }
