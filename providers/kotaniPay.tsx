@@ -21,8 +21,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDebounce } from "use-debounce";
 import { z } from "zod";
-import { Check, X, Clock } from "lucide-react"; // For status icons
-import { format } from "date-fns"; // For date formatting
+import { Check, X, Clock } from "lucide-react";
+import { format } from "date-fns";
 import {
   Accordion,
   AccordionContent,
@@ -48,8 +48,10 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
   const getCustomerWalletByPhone = useGetCustomerMobileMoneyWalletByPhone();
   const createCustomerWallet = useCreateCustomerMobileMoneyWallet();
   const searchParams = useSearchParams();
+  const provider = searchParams.get("provider");
   const providerUuid = searchParams.get("providerUuid");
   const chain = searchParams.get("chain");
+  const token = searchParams.get("token");
   const router = useRouter();
 
   // Initialize the form with react-hook-form and Zod resolver
@@ -60,31 +62,6 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
       amount: "",
     },
   });
-
-  // Function to check wallet info by phone number
-  async function checkWalletInfo(phoneNumber: string) {
-    const walletInfo = await getCustomerWalletByPhone.mutateAsync({
-      providerUuid,
-      payload: {
-        phone_number: phoneNumber,
-      },
-    });
-    console.log("w", walletInfo);
-    return walletInfo;
-  }
-
-  // Function to create a new account
-  async function createAccount(data: z.infer<typeof formSchema>) {
-    await createCustomerWallet.mutateAsync({
-      providerUuid,
-      payload: {
-        phone_number: data.phone_code + data.phone_number,
-        country_code: data.country_code,
-        network: data.network,
-        account_name: data.account_name,
-      },
-    });
-  }
 
   // Watch phone number input and debounce it
   const phoneNumber = form.watch("phoneNumber");
@@ -97,9 +74,12 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
   useEffect(() => {
     if (debouncedPhoneNumber) {
       setIsLoading(true);
-      checkWalletInfo(debouncedPhoneNumber)
+      getCustomerWalletByPhone
+        .mutateAsync({
+          providerUuid,
+          payload: { phone_number: debouncedPhoneNumber },
+        })
         .then((info) => {
-          console.log("info", info);
           setWalletInfo(info.data);
           setTransactionsByPhone(info.transaction);
           setIsLoading(false);
@@ -111,20 +91,14 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
     }
   }, [debouncedPhoneNumber]);
 
-  // Handle account creation
-  const handleCreateAccount = async (data: z.infer<typeof formSchema>) => {
-    try {
-      await createAccount(data).then((res) => {
-        setWalletInfo(res);
-        setIsModalOpen(false);
-      });
-    } catch (error) {
-      console.error("Error creating account:", error);
-    }
-  };
-
   // Check if there are any pending transactions
   const hasTransactionsPending = transactionByPhone.some(
+    (transaction) =>
+      transaction.status !== "COMPLETED" && transaction.status !== "CANCELLED"
+  );
+
+  // Filter pending transactions
+  const pendingTransactions = transactionByPhone.filter(
     (transaction) =>
       transaction.status !== "COMPLETED" && transaction.status !== "CANCELLED"
   );
@@ -139,6 +113,21 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
       default:
         return <Clock className='text-yellow-500' />;
     }
+  };
+
+  // Function to generate query string for links
+  const generateQueryString = (
+    referenceId: string,
+    includePhone: boolean = false
+  ) => {
+    const params = new URLSearchParams();
+    if (provider) params.append("provider", provider);
+    if (providerUuid) params.append("providerUuid", providerUuid);
+    if (chain) params.append("chain", chain);
+    if (token) params.append("token", token);
+    params.append("referenceId", referenceId);
+    if (includePhone) params.append("phone_number", phoneNumber);
+    return params.toString();
   };
 
   return (
@@ -164,18 +153,17 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         {/* Loading Indicator */}
         {isLoading && <p>Checking wallet info...</p>}
 
-        {/* Wallet Info Display */}
+        {/* Wallet Info and Transaction Display */}
         {walletInfo ? (
           <div>
             <h3 className='font-bold'>Wallet Info</h3>
-            {walletInfo &&
-              Object.keys(walletInfo).map((key) => (
-                <p key={key}>
-                  {formatCasesToReadable(key)}: {walletInfo[key]}
-                </p>
-              ))}
+            {Object.keys(walletInfo).map((key) => (
+              <p key={key}>
+                {formatCasesToReadable(key)}: {walletInfo[key]}
+              </p>
+            ))}
 
-            {/* Enhanced Transaction List Display */}
+            {/* Transaction List */}
             {transactionByPhone.length > 0 && (
               <div className='bg-white p-4 rounded-lg shadow'>
                 <Accordion type='single' collapsible className='space-y-2'>
@@ -202,12 +190,25 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
                               Created At:{" "}
                               {format(new Date(transaction.createdAt), "PPp")}
                             </p>
+                            {transaction.status !== "COMPLETED" &&
+                              transaction.status !== "CANCELLED" && (
+                                <Link
+                                  target='_blank'
+                                  className='mt-2 inline-block text-blue-500 hover:text-blue-700 px-2 py-1 border border-blue-500 rounded-lg w-full text-center'
+                                  href={`/send-token?${generateQueryString(
+                                    transaction.referenceId,
+                                    true
+                                  )}`}>
+                                  Continue Transaction
+                                </Link>
+                              )}
                             <Link
                               target='_blank'
-                              // like outlined button
                               className='mt-2 inline-block text-blue-500 hover:text-blue-700 px-2 py-1 border border-blue-500 rounded-lg w-full text-center'
-                              href={`/status?referenceId=${transaction.referenceId}&providerUuid=${providerUuid}`}>
-                              Detail
+                              href={`/status?${generateQueryString(
+                                transaction.referenceId
+                              )}`}>
+                              View Details
                             </Link>
                           </div>
                         ))}
@@ -224,40 +225,82 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           </Button>
         )}
 
-        {/* Amount Field (shown only if no pending transactions) */}
-        {!hasTransactionsPending && (
-          <FormField
-            control={form.control}
-            name='amount'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Amount to send</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Amount Field or Pending Transactions */}
+        {!hasTransactionsPending ? (
+          <>
+            <FormField
+              control={form.control}
+              name='amount'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount to send</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type='submit' className='w-full mt-2'>
+              Submit
+            </Button>
+          </>
+        ) : (
+          <div className='mt-4'>
+            <p className='text-yellow-600 mb-2'>
+              You have pending transactions. Please complete them before
+              starting a new one.
+            </p>
+            <div className='space-y-4'>
+              {pendingTransactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className='flex flex-col p-4 border bg-white rounded-lg shadow'>
+                  <div className='flex items-center gap-2 mb-2'>
+                    {getStatusIcon(transaction.status)}
+                    <span className='font-medium capitalize'>
+                      {transaction.status.toLowerCase()}
+                    </span>
+                  </div>
+                  <p className='text-sm text-gray-600'>
+                    Reference ID: {transaction.referenceId}
+                  </p>
+                  <p className='text-sm text-gray-600'>
+                    Created At: {format(new Date(transaction.createdAt), "PPp")}
+                  </p>
+                  <Link
+                    target='_blank'
+                    className='mt-2 inline-block text-blue-500 hover:text-blue-700 px-2 py-1 border border-blue-500 rounded-lg w-full text-center'
+                    href={`/send-token?${generateQueryString(
+                      transaction.referenceId,
+                      true
+                    )}`}>
+                    Continue Transaction
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
-
-        {/* Submit Button */}
-        <Button type='submit' className='w-full mt-2'>
-          Submit
-        </Button>
       </form>
 
       {/* Wallet Creation Modal */}
       <KotanipayWalletCreationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateAccount}
+        onSubmit={(data) => {
+          createCustomerWallet
+            .mutateAsync({ providerUuid, payload: data })
+            .then((res) => {
+              setWalletInfo(res);
+              setIsModalOpen(false);
+            });
+        }}
       />
     </Form>
   );
 }
 
-// Export the provider configuration
 export const kotanipayProvider: OfframpProvider = {
   id: "kotanipayProvider",
   name: "Kotani Pay",
