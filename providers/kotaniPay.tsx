@@ -89,7 +89,6 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         .catch((e) => {
           console.log("e", e.response?.data.statusCode);
           if (e?.response?.data?.statusCode === 500) {
-            console.log("here");
             setWalletInfo(false);
             setTransactionsByPhone([]);
             setIsLoading(false);
@@ -101,7 +100,6 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         });
     }
   }, [debouncedPhoneNumber]);
-  console.log("first", walletInfo);
 
   // Check if there are any pending transactions
   const hasTransactionsPending = transactionByPhone.some(
