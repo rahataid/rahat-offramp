@@ -80,16 +80,28 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           payload: { phone_number: debouncedPhoneNumber },
         })
         .then((info) => {
+          console.log("info", info);
+
           setWalletInfo(info.data);
           setTransactionsByPhone(info.transaction);
           setIsLoading(false);
         })
-        .catch(() => {
+        .catch((e) => {
+          console.log("e", e.response?.data.statusCode);
+          if (e?.response?.data?.statusCode === 500) {
+            console.log("here");
+            setWalletInfo(false);
+            setTransactionsByPhone([]);
+            setIsLoading(false);
+            return;
+          }
+
           setWalletInfo(null);
           setIsLoading(false);
         });
     }
   }, [debouncedPhoneNumber]);
+  console.log("first", walletInfo);
 
   // Check if there are any pending transactions
   const hasTransactionsPending = transactionByPhone.some(
@@ -152,6 +164,9 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
 
         {/* Loading Indicator */}
         {isLoading && <p>Checking wallet info...</p>}
+        {walletInfo === false && (
+          <p className='text-red-500'>Wallet not found. Please create one.</p>
+        )}
 
         {/* Wallet Info and Transaction Display */}
         {walletInfo ? (
