@@ -254,7 +254,14 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
                 </FormItem>
               )}
             />
-            <Button type='submit' className='w-full mt-2'>
+            <Button
+              disabled={
+                !form.formState.isValid ||
+                form.formState.isSubmitting ||
+                isLoading
+              }
+              type='submit'
+              className='w-full mt-2'>
               Submit
             </Button>
           </>

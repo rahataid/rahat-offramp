@@ -5,6 +5,8 @@ export const CHAIN_URL =
   process.env.NEXT_PUBLIC_CHAIN_URL ||
   "https://base-sepolia.g.alchemy.com/v2/DWIg24dRnbm436fI1SP9fc4HVdr3xTZu";
 export const CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || 84532;
+export const BLOCK_EXPLORER_URL =
+  process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || "https://sepolia.basescan.org";
 
 //   KE: "+254",
 // UG: "+256",

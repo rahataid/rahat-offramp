@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { useCheckOfframpStatus } from "@/lib/offramp";
 import { formatCasesToReadable } from "@/utils/formatCasesToReadable";
 import { Button } from "@/components/ui/button";
+import { BLOCK_EXPLORER_URL } from "@/config/constants";
 
 export default function StatusPage() {
   const searchParams = useSearchParams();
@@ -71,9 +72,9 @@ export default function StatusPage() {
       return null;
     }
     if (key === "transactionHash") {
-      return `https://basescan.org/tx/${value}`;
+      return `${BLOCK_EXPLORER_URL}/tx/${value}`;
     } else if (key.toLowerCase().includes("address")) {
-      return `https://basescan.org/address/${value}`;
+      return `${BLOCK_EXPLORER_URL}/address/${value}`;
     }
     return null;
   };

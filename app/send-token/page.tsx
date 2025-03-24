@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { OfframpLayout } from "@/components/offramp-layout";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { ConnectKitButton } from "connectkit";
@@ -65,6 +65,7 @@ export default function SendPage() {
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
   const [walletToUse, setWalletToUse] = useState<any>(null);
   const [offrampStatus, setOfframpStatus] = useState<any>(null);
+  console.log("first", offrampStatus);
 
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -219,11 +220,13 @@ export default function SendPage() {
       setError("Transaction failed. Please try again.");
     }
   };
-  console.log("txHash", txHash, waitForTransaction);
+
+  const offrampSenderAddress = offrampStatus?.senderAddress;
+  const isSenderAddress =
+    address?.toLowerCase() === offrampSenderAddress?.toLowerCase();
 
   useEffect(() => {
     if (waitForTransaction.isFetched) {
-      console.log("params", params.toString());
       router.push(
         `/status?referenceId=${referenceId}&providerUuid=${providerUuid}`
       );
@@ -377,9 +380,31 @@ export default function SendPage() {
               className='w-full'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}>
+              {!isSenderAddress && (
+                <Alert variant='destructive' className='mb-4'>
+                  <AlertTitle className='text-sm font-bold'>
+                    Sender Address Mismatch
+                  </AlertTitle>
+                  <AlertDescription className='text-sm font-medium'>
+                    Connect your wallet to send crypto to the address below.
+                    <br />
+                    <span className='text-sm font-medium'>
+                      User this wallet address: {offrampSenderAddress}
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
               {/* Transaction not sent yet */}
               {!isTransactionSent && (
-                <Button onClick={handleSend} size='lg' className='w-full'>
+                <Button
+                  disabled={
+                    !isSenderAddress ||
+                    isTransactionLoading ||
+                    !offrampStatus?.escrowAddress
+                  }
+                  onClick={handleSend}
+                  size='lg'
+                  className='w-full'>
                   {isTransactionLoading ? (
                     <>
                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
