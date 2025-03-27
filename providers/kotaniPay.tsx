@@ -311,7 +311,20 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         onClose={() => setIsModalOpen(false)}
         onSubmit={(data) => {
           return createCustomerWallet
-            .mutateAsync({ providerUuid, payload: data })
+            .mutateAsync({
+              providerUuid,
+              payload: {
+                ...data,
+                phone_number: `${data?.phone_code}${data?.phone_number.replace(
+                  /\s/g,
+                  ""
+                )}`,
+                country_code: data?.country_code,
+                network: data?.network,
+
+                account_name: data?.account_name,
+              },
+            })
             .then((res) => {
               setWalletInfo(res);
             });
