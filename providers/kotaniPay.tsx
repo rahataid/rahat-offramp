@@ -43,6 +43,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [transactionByPhone, setTransactionsByPhone] = useState([]);
+  console.log("walletInfo", walletInfo);
 
   // Hooks for API calls and navigation
   const getCustomerWalletByPhone = useGetCustomerMobileMoneyWalletByPhone();
@@ -80,10 +81,11 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           payload: { phone_number: debouncedPhoneNumber },
         })
         .then((info) => {
+          const { transactions, ...walletInformation } = info;
           console.log("info", info);
 
-          setWalletInfo(info.data);
-          setTransactionsByPhone(info.transactions);
+          setWalletInfo(walletInformation);
+          setTransactionsByPhone(transactions);
           setIsLoading(false);
         })
         .catch((e) => {
