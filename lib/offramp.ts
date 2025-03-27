@@ -97,7 +97,6 @@ export const useGetSingleOfframpRequest = (payload: {
 
 export const useGetCustomerMobileMoneyWalletByPhone = () => {
   const providerAction = useProviderAction();
-  const { toast } = useToast();
 
   return useMutation({
     mutationKey: ["get-customer-wallet-by-phone"],

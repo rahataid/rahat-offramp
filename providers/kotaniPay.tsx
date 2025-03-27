@@ -30,6 +30,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import Link from "next/link";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define the form schema using Zod for validation
 const formSchema = z.object({
@@ -164,9 +165,22 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         />
 
         {/* Loading Indicator */}
-        {isLoading && <p>Checking wallet info...</p>}
-        {walletInfo === false && (
-          <p className='text-red-500'>Wallet not found. Please create one.</p>
+        {isLoading && (
+          <Alert>
+            <AlertTitle>Please Wait...</AlertTitle>
+            <AlertDescription>
+              <span className='flex text-sm text-blue-700'>
+                <Clock className='w-4 h-4 text-blue-500' />
+                Checking for wallet for the phone number.
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+        {walletInfo === false && !isLoading && (
+          <Alert variant='destructive'>
+            <AlertTitle>No Wallet found for this number</AlertTitle>
+            <AlertDescription>Please create wallet to proceed</AlertDescription>
+          </Alert>
         )}
 
         {/* Wallet Info and Transaction Display */}
@@ -242,7 +256,9 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         )}
 
         {/* Amount Field or Pending Transactions */}
-        {!hasTransactionsPending ? (
+        {walletInfo === false ? (
+          <></>
+        ) : !hasTransactionsPending ? (
           <>
             <FormField
               control={form.control}

@@ -140,8 +140,10 @@ export default function SendPage() {
         providerUuid,
         payload: { phone_number: phoneNumber?.replace(/\s/g, "") },
       });
+      console.log("wallet", wallet);
       if (wallet) {
         const ctry = getCountryByCode(wallet.country_code);
+        console.log("wallet", wallet);
 
         setUserWallet(wallet);
         setCountryInfo(ctry || null);
@@ -293,7 +295,7 @@ export default function SendPage() {
               <ConnectKitButton />
             </div>
 
-            <Alert variant='info' className='bg-blue-50 border-blue-200'>
+            <Alert className='bg-blue-50 border-blue-200'>
               <AlertDescription className='text-center font-medium'>
                 Please send exactly{" "}
                 <span className='font-bold'>
