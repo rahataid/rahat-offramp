@@ -141,9 +141,10 @@ export const useCreateCustomerMobileMoneyWallet = () => {
       });
     },
     onError(e: any) {
+      console.log("e", e);
       const errorMessages = e?.response?.data?.meta?.data?.errors || [
-        "Error Occured",
-      ];
+          e?.response?.data?.meta?.message,
+        ] || ["Error Occured"];
       toast({
         title: "Wallet Creation Failed",
         description: errorMessages.join(","),

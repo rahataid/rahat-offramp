@@ -67,7 +67,6 @@ export default function DetailsPage() {
     const ctry = getCountryByCode(data?.walletInfo?.country_code);
     if (!ctry) return setUiError("Could not identify country from phone info.");
 
-    console.log("data", data);
     try {
       const { data: walletCheck } = await customerWallet.mutateAsync({
         providerUuid: providerUuid || "",
@@ -76,7 +75,6 @@ export default function DetailsPage() {
         },
       });
       console.log("first", walletCheck);
-
       if (!walletCheck) throw new Error("Wallet not found for this number.");
 
       const foundFiatWallet = fiatWallets.data?.find(

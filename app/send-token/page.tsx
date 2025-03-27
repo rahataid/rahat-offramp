@@ -65,7 +65,6 @@ export default function SendPage() {
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
   const [walletToUse, setWalletToUse] = useState<any>(null);
   const [offrampStatus, setOfframpStatus] = useState<any>(null);
-  console.log("first", offrampStatus);
 
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -140,10 +139,8 @@ export default function SendPage() {
         providerUuid,
         payload: { phone_number: phoneNumber?.replace(/\s/g, "") },
       });
-      console.log("wallet", wallet);
       if (wallet) {
         const ctry = getCountryByCode(wallet.country_code);
-        console.log("wallet", wallet);
 
         setUserWallet(wallet);
         setCountryInfo(ctry || null);
@@ -174,10 +171,8 @@ export default function SendPage() {
     const foundFiatWallet = fiatWallets.data.find(
       (w) => w.currency === countryInfo.currency
     );
-    console.log("found", foundFiatWallet, fiatWallets);
     // Only update if it's different
     if (foundFiatWallet && foundFiatWallet.id !== walletToUse?.id) {
-      console.log("first", foundFiatWallet);
       setWalletToUse(foundFiatWallet);
     }
   }, [countryInfo, fiatWallets.data]); // removed walletToUse?.id
@@ -219,7 +214,10 @@ export default function SendPage() {
       }
     } catch (err) {
       console.error("Transaction error:", err);
-      setError("Transaction failed. Please try again.");
+      setError(
+        err?.cause?.cause?.shortMessage ||
+          "Transaction failed. Please try again."
+      );
     }
   };
 
