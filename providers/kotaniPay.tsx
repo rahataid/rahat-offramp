@@ -104,13 +104,17 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
   // Check if there are any pending transactions
   const hasTransactionsPending = transactionByPhone.some(
     (transaction) =>
-      transaction.status !== "SUCCESSFUL" && transaction.status !== "CANCELLED"
+      transaction.status !== "SUCCESSFUL" &&
+      transaction.status !== "CANCELLED" &&
+      transaction.status !== "FAILED"
   );
 
   // Filter pending transactions
   const pendingTransactions = transactionByPhone.filter(
     (transaction) =>
-      transaction.status !== "SUCCESSFUL" && transaction.status !== "CANCELLED"
+      transaction.status !== "SUCCESSFUL" &&
+      transaction.status !== "CANCELLED" &&
+      transaction.status !== "FAILED"
   );
 
   // Function to get status icon based on transaction status
