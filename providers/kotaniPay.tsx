@@ -81,7 +81,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           providerUuid,
           payload: { phone_number: debouncedPhoneNumber },
         })
-        .then((info) => {
+        .then(({ data: info }) => {
           const { transactions, ...walletInformation } = info;
           console.log("info", info);
 
@@ -90,7 +90,6 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           setIsLoading(false);
         })
         .catch((e) => {
-          console.log("e", e.response?.data.statusCode);
           if (e?.response?.data?.statusCode === 500) {
             setWalletInfo(false);
             setTransactionsByPhone([]);
@@ -102,25 +101,24 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           setIsLoading(false);
         });
     }
-  }, [debouncedPhoneNumber]);
-  console.log("transactionByPhone", transactionByPhone);
+  }, [debouncedPhoneNumber, createCustomerWallet.isSuccess]);
 
   // Check if there are any pending transactions
   const hasTransactionsPending = transactionByPhone.some(
     (transaction) =>
-      transaction.status !== "COMPLETED" && transaction.status !== "CANCELLED"
+      transaction.status !== "SUCCESSFUL" && transaction.status !== "CANCELLED"
   );
 
   // Filter pending transactions
   const pendingTransactions = transactionByPhone.filter(
     (transaction) =>
-      transaction.status !== "COMPLETED" && transaction.status !== "CANCELLED"
+      transaction.status !== "SUCCESSFUL" && transaction.status !== "CANCELLED"
   );
 
   // Function to get status icon based on transaction status
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "COMPLETED":
+      case "SUCCESSFUL":
         return <Check className='text-green-500' />;
       case "CANCELLED":
         return <X className='text-red-500' />;
@@ -185,68 +183,79 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
 
         {/* Wallet Info and Transaction Display */}
         {walletInfo ? (
-          <div>
-            <h3 className='font-bold'>Wallet Info</h3>
-            {Object.keys(walletInfo).map((key) => (
-              <p key={key}>
-                {formatCasesToReadable(key)}: {walletInfo[key]}
-              </p>
-            ))}
-
-            {/* Transaction List */}
-            {transactionByPhone.length > 0 && (
-              <div className='bg-white p-4 rounded-lg shadow'>
-                <Accordion type='single' collapsible className='space-y-2'>
-                  <AccordionItem value='previous-offramps'>
-                    <AccordionTrigger className='font-bold text-lg'>
-                      Previous Offramps
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className='space-y-4'>
-                        {transactionByPhone.map((transaction) => (
-                          <div
-                            key={transaction.id}
-                            className='flex flex-col p-4 border-b bg-gray-50 rounded-lg'>
-                            <div className='flex items-center gap-2 mb-2'>
-                              {getStatusIcon(transaction.status)}
-                              <span className='font-medium capitalize'>
-                                {transaction.status.toLowerCase()}
-                              </span>
-                            </div>
-                            <p className='text-sm text-gray-600'>
-                              Reference ID: {transaction.referenceId}
-                            </p>
-                            <p className='text-sm text-gray-600'>
-                              Created At:{" "}
-                              {format(new Date(transaction.createdAt), "PPp")}
-                            </p>
-                            {transaction.status !== "COMPLETED" &&
-                              transaction.status !== "CANCELLED" && (
-                                <Link
-                                  target='_blank'
-                                  className='mt-2 inline-block text-blue-500 hover:text-blue-700 px-2 py-1 border border-blue-500 rounded-lg w-full text-center'
-                                  href={`/send-token?${generateQueryString(
-                                    transaction.referenceId,
-                                    true
-                                  )}`}>
-                                  Continue Transaction
-                                </Link>
-                              )}
-                            <Link
-                              target='_blank'
-                              className='mt-2 inline-block text-blue-500 hover:text-blue-700 px-2 py-1 border border-blue-500 rounded-lg w-full text-center'
-                              href={`/status?${generateQueryString(
-                                transaction.referenceId
-                              )}`}>
-                              View Details
-                            </Link>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+          <div className='space-y-4'>
+            {/* Wallet Info */}
+            <div>
+              <h3 className='font-bold text-lg mb-2'>Wallet Info</h3>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+                {Object.entries(walletInfo).map(([key, value]) => (
+                  <p key={key} className='text-sm text-gray-700'>
+                    <span className='font-medium'>
+                      {formatCasesToReadable(key)}:
+                    </span>{" "}
+                    {String(value)}
+                  </p>
+                ))}
               </div>
+            </div>
+
+            {/* Offramp Transaction List */}
+            {transactionByPhone.length > 0 && (
+              <Accordion
+                type='single'
+                collapsible
+                className='bg-white p-4 rounded-lg shadow'>
+                <AccordionItem value='previous-offramps'>
+                  <AccordionTrigger className='font-bold text-lg'>
+                    Previous Offramps ({transactionByPhone.length})
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className='space-y-4'>
+                      {transactionByPhone.map((tx) => (
+                        <div
+                          key={tx.id}
+                          className='p-4 border bg-gray-50 rounded-lg shadow-sm flex flex-col gap-2'>
+                          <div className='flex items-center gap-2'>
+                            {getStatusIcon(tx.status)}
+                            <span className='font-semibold capitalize'>
+                              {tx.status.toLowerCase()}
+                            </span>
+                          </div>
+                          <p className='text-sm text-gray-600'>
+                            Reference ID: {tx.referenceId}
+                          </p>
+                          <p className='text-sm text-gray-600'>
+                            Created At: {format(new Date(tx.createdAt), "PPp")}
+                          </p>
+
+                          {/* Continue Link (only if still in progress) */}
+                          {["PENDING", "PROCESSING"].includes(tx.status) && (
+                            <Link
+                              href={`/send-token?${generateQueryString(
+                                tx.referenceId,
+                                true
+                              )}`}
+                              target='_blank'
+                              className='text-blue-500 hover:text-blue-700 text-sm border border-blue-500 rounded-md px-3 py-1 text-center'>
+                              Continue Transaction
+                            </Link>
+                          )}
+
+                          {/* Always show View Details */}
+                          <Link
+                            href={`/status?${generateQueryString(
+                              tx.referenceId
+                            )}`}
+                            target='_blank'
+                            className='text-blue-500 hover:text-blue-700 text-sm border border-blue-500 rounded-md px-3 py-1 text-center'>
+                            View Details
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
           </div>
         ) : (
@@ -256,10 +265,8 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         )}
 
         {/* Amount Field or Pending Transactions */}
-        {walletInfo === false ? (
-          <></>
-        ) : !hasTransactionsPending ? (
-          <>
+        {!!walletInfo && !hasTransactionsPending && (
+          <div>
             <FormField
               control={form.control}
               name='amount'
@@ -283,8 +290,9 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
               className='w-full mt-2'>
               Submit
             </Button>
-          </>
-        ) : (
+          </div>
+        )}
+        {hasTransactionsPending && (
           <div className='mt-4'>
             <p className='text-yellow-600 mb-2'>
               You have pending transactions. Please complete them before
@@ -307,14 +315,26 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
                   <p className='text-sm text-gray-600'>
                     Created At: {format(new Date(transaction.createdAt), "PPp")}
                   </p>
+                  {["PENDING", "PROCESSING"].includes(transaction.status) && (
+                    <Link
+                      href={`/send-token?${generateQueryString(
+                        transaction.referenceId,
+                        true
+                      )}`}
+                      target='_blank'
+                      className='text-blue-500 hover:text-blue-700 text-sm border border-blue-500 rounded-md px-3 py-1 text-center'>
+                      Continue Transaction
+                    </Link>
+                  )}
+
+                  {/* Always show View Details */}
                   <Link
+                    href={`/status?${generateQueryString(
+                      transaction.referenceId
+                    )}`}
                     target='_blank'
-                    className='mt-2 inline-block text-blue-500 hover:text-blue-700 px-2 py-1 border border-blue-500 rounded-lg w-full text-center'
-                    href={`/send-token?${generateQueryString(
-                      transaction.referenceId,
-                      true
-                    )}`}>
-                    Continue Transaction
+                    className='text-blue-500 hover:text-blue-700 text-sm border border-blue-500 rounded-md px-3 py-1 text-center'>
+                    View Details
                   </Link>
                 </div>
               ))}
@@ -327,6 +347,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
       <KotanipayWalletCreationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        defaultPhoneNumber={form.getValues("phoneNumber")}
         onSubmit={(data) => {
           return createCustomerWallet
             .mutateAsync({

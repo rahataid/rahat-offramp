@@ -51,6 +51,19 @@ export const useCreateOfframpRequest = () => {
     },
   });
 };
+
+export const useOfframpTransactions = (senderAddress?: string) => {
+  return useQuery({
+    queryKey: ["offramp-transactions", senderAddress],
+    enabled: !!senderAddress,
+    queryFn: async () => {
+      const res = await api.get("/offramps/transactions", {
+        params: { senderAddress },
+      });
+      return res?.data?.data || [];
+    },
+  });
+};
 export const useExecuteOfframpRequest = () => {
   return useMutation<
     any,
@@ -112,7 +125,7 @@ export const useGetCustomerMobileMoneyWalletByPhone = () => {
         action: "get-customer-wallet-by-phone",
         payload: data.payload,
       });
-      return res?.data || {};
+      return res || {};
     },
   });
 };
