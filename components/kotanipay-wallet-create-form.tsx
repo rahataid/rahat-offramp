@@ -30,6 +30,7 @@ import { supportedCountries } from "@/config/constants";
 import { motion } from "framer-motion";
 import { Loader2, CreditCard } from "lucide-react";
 
+// Define the form schema using Zod
 const formSchema = z.object({
   phone_number: z.string().min(1, "Phone number is required"),
   country_code: z.string().min(1, "Country code is required"),
@@ -39,18 +40,23 @@ const formSchema = z.object({
   currency: z.string().min(1, "Currency is required"),
 });
 
+// Define the props type for the modal component
 type AccountCreationModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: z.infer<typeof formSchema>) => Promise<void>;
 };
 
+// Kotanipay Wallet Creation Modal component
 export function KotanipayWalletCreationModal({
   isOpen,
   onClose,
   onSubmit,
 }: AccountCreationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Initialize the form with react-hook-form and Zod resolver
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,18 +69,23 @@ export function KotanipayWalletCreationModal({
     },
   });
 
+  // Handle form submission
+
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       await onSubmit(data);
       onClose();
     } catch (error) {
       console.error("Error creating account:", error);
+      setErrorMessage("Failed to create wallet. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Handle country selection and update related fields
   const handleCountryChange = (
     country: string,
     phoneCode: string,
@@ -86,7 +97,15 @@ export function KotanipayWalletCreationModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        // Prevent closing the modal if a request is pending
+        if (!open && isLoading) {
+          return;
+        }
+        onClose(); // Allow closing only if not loading
+      }}>
       <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
           <DialogTitle className='text-2xl font-bold flex items-center gap-2'>
@@ -98,6 +117,7 @@ export function KotanipayWalletCreationModal({
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
             className='space-y-6'>
+            {/* Country Selection */}
             <FormField
               control={form.control}
               name='country_code'
@@ -133,6 +153,8 @@ export function KotanipayWalletCreationModal({
                 </FormItem>
               )}
             />
+
+            {/* Phone Number Input */}
             <FormField
               control={form.control}
               name='phone_number'
@@ -163,6 +185,8 @@ export function KotanipayWalletCreationModal({
                 </FormItem>
               )}
             />
+
+            {/* Network Selection */}
             <FormField
               control={form.control}
               name='network'
@@ -188,6 +212,8 @@ export function KotanipayWalletCreationModal({
                 </FormItem>
               )}
             />
+
+            {/* Account Name Input */}
             <FormField
               control={form.control}
               name='account_name'
@@ -205,6 +231,9 @@ export function KotanipayWalletCreationModal({
                 </FormItem>
               )}
             />
+
+            {/* Display Error Message if Any */}
+            {errorMessage && <p className='text-red-500'>{errorMessage}</p>}
           </form>
         </Form>
         <DialogFooter>

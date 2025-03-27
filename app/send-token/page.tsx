@@ -244,6 +244,19 @@ export default function SendPage() {
     );
   }
 
+  if (offrampStatus?.onchainStatus === "CANCELLED") {
+    return (
+      <OfframpLayout>
+        <div className='text-center text-2xl font-semibold text-red-500'>
+          <p>Offramp Transaction has been CANCELLED</p>
+        </div>
+        <Button variant='outline' onClick={() => router.back()}>
+          Go Back
+        </Button>
+      </OfframpLayout>
+    );
+  }
+
   //
   // 10) Rendering
   //
@@ -389,7 +402,7 @@ export default function SendPage() {
                     Connect your wallet to send crypto to the address below.
                     <br />
                     <span className='text-sm font-medium'>
-                      User this wallet address: {offrampSenderAddress}
+                      Use this wallet address: {offrampSenderAddress}
                     </span>
                   </AlertDescription>
                 </Alert>

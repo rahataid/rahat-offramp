@@ -1,3 +1,4 @@
+import { useToast } from "@/hooks/use-toast";
 import api, { endpoints } from "@/lib/api";
 import { joinLocalAndApiProviders } from "@/providers";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -96,8 +97,11 @@ export const useGetSingleOfframpRequest = (payload: {
 
 export const useGetCustomerMobileMoneyWalletByPhone = () => {
   const providerAction = useProviderAction();
+  const { toast } = useToast();
+
   return useMutation({
     mutationKey: ["get-customer-wallet-by-phone"],
+
     mutationFn: async (data: {
       providerUuid: string;
       payload: {
@@ -115,8 +119,25 @@ export const useGetCustomerMobileMoneyWalletByPhone = () => {
 };
 export const useCreateCustomerMobileMoneyWallet = () => {
   const providerAction = useProviderAction();
+  const { toast } = useToast();
   return useMutation({
     mutationKey: ["create-customer-mobile-wallet"],
+    onSuccess(data, variables, context) {
+      toast({
+        title: "Wallet Created",
+        description: "Mobile Money Wallet Created Successfully for the user.",
+      });
+    },
+    onError(e: any) {
+      const errorMessages = e?.response?.data?.meta?.data?.errors || [
+        "Error Occured",
+      ];
+      toast({
+        title: "Wallet Creation Failed",
+        description: errorMessages.join(","),
+        variant: "destructive",
+      });
+    },
     mutationFn: async (data: {
       providerUuid: string;
       payload: {

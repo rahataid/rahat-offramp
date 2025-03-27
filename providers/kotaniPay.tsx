@@ -83,7 +83,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
           console.log("info", info);
 
           setWalletInfo(info.data);
-          setTransactionsByPhone(info.transaction);
+          setTransactionsByPhone(info.transactions);
           setIsLoading(false);
         })
         .catch((e) => {
@@ -100,6 +100,7 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         });
     }
   }, [debouncedPhoneNumber]);
+  console.log("transactionByPhone", transactionByPhone);
 
   // Check if there are any pending transactions
   const hasTransactionsPending = transactionByPhone.some(
@@ -309,11 +310,10 @@ function KotaniPayForm({ onSubmit }: OfframpFormProps) {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={(data) => {
-          createCustomerWallet
+          return createCustomerWallet
             .mutateAsync({ providerUuid, payload: data })
             .then((res) => {
               setWalletInfo(res);
-              setIsModalOpen(false);
             });
         }}
       />

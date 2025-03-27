@@ -1,19 +1,20 @@
-import { Providers } from '@/components/providers'
-import '@/styles/globals.css'
+import { Providers } from "@/components/providers";
+import { Toaster } from "@/components/ui/toaster";
+import "@/styles/globals.css";
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang='en'>
       <body>
         <Providers>
           {children}
+          <Toaster />
         </Providers>
       </body>
     </html>
-  )
+  );
 }
-
