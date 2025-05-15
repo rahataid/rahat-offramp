@@ -1,7 +1,5 @@
 # Rahat Offramp
 
-![Rahat Offramp](https://via.placeholder.com/800x400?text=Rahat+Offramp)
-
 Rahat Offramp is a modern web application that provides a seamless interface for converting cryptocurrency to fiat currency (cash or mobile money) through various payment providers. It serves as a critical component of the Rahat ecosystem, enabling beneficiaries and users to easily cash out their digital assets.
 
 ## 🌟 Features
@@ -507,20 +505,6 @@ docker run -p 3003:3003 rahat-offramp
 
 For standalone deployment, use `Dockerfile.standalone`.
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -586,16 +570,4 @@ For detailed API documentation, refer to the backend repository.
 ## 🌐 Related Projects
 
 - [Rahat Platform](https://github.com/rahataid/rahat-platform) - Main Rahat platform
-- [Rahat C2C](https://github.com/rahataid/rahat-project-c2c) - Mobile application for Rahat
-
-## 📞 Support
-
-For support, please contact the Rahat team or open an issue in this repository.
-
-## 🔮 Roadmap
-
-- Add support for additional payment providers
-- Implement multi-language support
-- Enhance transaction history and reporting
-- Improve mobile experience
-- Add offline capabilities for low-connectivity regions
+- [Rahat C2C](https://github.com/rahataid/rahat-project-c2c) - Crypto transaction micro service for Rahat
